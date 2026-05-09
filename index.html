@@ -259,6 +259,22 @@ td.cell-selected{outline:3px solid #ff6f00 !important;outline-offset:-2px;box-sh
 .success-message.show{display:block;animation:slideIn .3s}
 @keyframes slideIn{from{transform:translateY(-10px);opacity:0}to{transform:translateY(0);opacity:1}}
 .mt{margin-top:16px}
+
+/* DEVICE ALERT */
+.device-alert-badge{display:inline-flex;align-items:center;justify-content:center;background:#e74c3c;color:white;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;padding:0 4px;margin-left:4px;animation:alertPulse 2s infinite}
+@keyframes alertPulse{0%,100%{opacity:1}50%{opacity:.6}}
+.da-table{width:100%;border-collapse:collapse;font-size:12px}
+.da-table thead{background:linear-gradient(135deg,#e65100,#bf360c);color:white;position:sticky;top:0;z-index:5}
+.da-table th{padding:8px 10px;text-align:left;font-weight:600;font-size:11px;white-space:nowrap}
+.da-table td{padding:7px 10px;border-bottom:1px solid #eee;font-size:12px}
+.da-table tbody tr:hover{background:#fff3e0}
+.da-table .da-new{background:#fff8e1}
+.da-empty{text-align:center;padding:40px;color:#999;font-size:14px}
+.da-summary{display:flex;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.da-stat{background:white;padding:10px 16px;border-radius:6px;border-left:4px solid #e65100;box-shadow:0 1px 4px rgba(0,0,0,.06);min-width:120px}
+.da-stat .da-stat-label{font-size:10px;color:#999;text-transform:uppercase}
+.da-stat .da-stat-value{font-size:20px;font-weight:700;color:#e65100}
+
 @media print{.header,.toolbar,.btn,.tab-button,.modal,.batch-bar,.tabs,.att-legend,.quick-bar{display:none!important}.table-wrapper{box-shadow:none;max-height:none}}
 @media(max-width:768px){.container{padding:8px}.form-row,.form-row.triple{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}.schedule-grid{grid-template-columns:80px repeat(7,1fr)}}
 </style>
@@ -409,13 +425,14 @@ td.cell-selected{outline:3px solid #ff6f00 !important;outline-offset:-2px;box-sh
                 <button class="btn btn-secondary btn-sm" onclick="attPrev()"><i class="fas fa-chevron-left"></i></button>
                 <button class="btn btn-secondary btn-sm" onclick="attNext()"><i class="fas fa-chevron-right"></i></button>
             </div>
-            <div class="toolbar-group"><button class="btn btn-secondary btn-sm" onclick="exportAttendance()"><i class="fas fa-download"></i> Xuất CSV 匯出</button></div>
+            <div class="toolbar-group"><button class="btn btn-secondary btn-sm" onclick="exportAttendance()"><i class="fas fa-download"></i> Xuất CSV 匯出</button><button class="btn btn-sm" onclick="exportAttendanceExcel()" style="background:#1b5e20;color:white;margin-left:4px"><i class="fas fa-file-excel"></i> Excel</button></div>
             <div class="toolbar-group"><button class="btn btn-sm" onclick="bulkConfirmAttendance()" style="background:#4caf50;color:white"><i class="fas fa-check-double"></i> Xác nhận 確認</button><button class="btn btn-sm" onclick="bulkUnconfirmAttendance()" style="background:#ef5350;color:white;margin-left:4px"><i class="fas fa-times-circle"></i> Hủy xác nhận 取消</button><button class="btn btn-sm btn-outline" onclick="clearAttSelection()" style="margin-left:4px"><i class="fas fa-eraser"></i> Bỏ chọn</button><span id="attSelCount" style="font-size:11px;font-weight:600;color:#1565c0;margin-left:6px"></span></div>
         </div>
         <div class="att-subtabs" id="attSubTabs">
             <button class="att-subtab active" onclick="setAttSubView('schedule')"><i class="fas fa-calendar-check"></i> Lịch làm 排班</button>
             <button class="att-subtab" onclick="setAttSubView('actual')"><i class="fas fa-clock"></i> Giờ thực 實際時數</button>
             <button class="att-subtab" onclick="setAttSubView('convert')"><i class="fas fa-exchange-alt"></i> Quy đổi 換算</button>
+            <button class="att-subtab" onclick="setAttSubView('deviceAlert')" id="btnDeviceAlertTab"><i class="fas fa-exclamation-triangle"></i> Cảnh báo TB 設備警報<span id="daAlertBadge" class="device-alert-badge" style="display:none">0</span></button>
         </div>
         <div id="attActualToolbar" style="display:none;padding:8px 12px;background:#fff3e0;border-radius:8px;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <span style="font-size:11px;font-weight:600;color:#e65100"><i class="fas fa-upload"></i> Tải file chấm công:</span>
@@ -424,6 +441,25 @@ td.cell-selected{outline:3px solid #ff6f00 !important;outline-offset:-2px;box-sh
                 <span id="qrSyncStatus" style="font-size:11px;margin-left:6px"></span>
         </div>
         <div id="attendanceGrid" class="table-wrapper" style="overflow-x:auto;max-height:calc(100vh - 280px)"></div>
+        <!-- DEVICE ALERTS VIEW -->
+        <div id="deviceAlertView" style="display:none">
+            <div class="da-summary" id="daSummary"></div>
+            <div class="toolbar" style="margin-bottom:8px">
+                <div class="toolbar-group">
+                    <button class="btn btn-sm" onclick="fetchDeviceAlerts()" style="background:#e65100;color:white"><i class="fas fa-sync-alt"></i> Tải cảnh báo 載入警報</button>
+                    <span id="daStatus" style="font-size:11px;margin-left:6px"></span>
+                </div>
+                <div class="toolbar-group">
+                    <label style="font-size:11px">Lọc NV:</label>
+                    <select id="daFilterEmp" onchange="renderDeviceAlerts()" style="font-size:11px;padding:4px 8px">
+                        <option value="">Tất cả 全部</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-wrapper" style="max-height:calc(100vh - 320px)" id="daTableWrapper">
+                <div class="da-empty"><i class="fas fa-shield-alt" style="font-size:40px;color:#ddd;display:block;margin-bottom:10px"></i>Bấm "Tải cảnh báo" để xem danh sách thiết bị lạ<br><span style="font-size:11px;color:#bbb">點擊「載入警報」查看異常設備列表</span></div>
+            </div>
+        </div>
         <!-- Employee detail modal for attendance -->
         <div class="modal" id="attDetailModal">
             <div class="modal-content" id="attDetailModalContent" style="max-width:700px">
@@ -917,6 +953,70 @@ function undoLast(){
     }catch(e){console.warn('Undo error:',e);showError('Lỗi hoàn tác!');}
 }
 function updateUndoBtn(){}
+// Merge cloud data into current local data (không mất dữ liệu)
+function _mergeCloudData(cloudData){
+    if(!cloudData)return false;
+    var changed=false;
+    // Helper: merge flat key-value objects (schedules, attendanceData, etc.)
+    // Rule: cloud wins if local key is missing or empty; local wins if local has value
+    function mergeObj(local,cloud){
+        if(!cloud||typeof cloud!=='object')return local;
+        if(!local||typeof local!=='object')return cloud;
+        var keys=Object.keys(cloud);
+        for(var i=0;i<keys.length;i++){
+            var k=keys[i];
+            if(local[k]===undefined||local[k]===null||local[k]===''){
+                local[k]=cloud[k];changed=true;
+            }else if(typeof local[k]==='object'&&typeof cloud[k]==='object'&&!Array.isArray(local[k])){
+                // Deep merge for nested objects (attTimesheetData, attConvertOverrides, payrollOverrides)
+                var ck=Object.keys(cloud[k]);
+                for(var j=0;j<ck.length;j++){
+                    if(local[k][ck[j]]===undefined||local[k][ck[j]]===null||local[k][ck[j]]===''){
+                        local[k][ck[j]]=cloud[k][ck[j]];changed=true;
+                    }
+                }
+            }
+        }
+        return local;
+    }
+    // Helper: merge Set-like arrays (union)
+    function mergeSetArr(localSet,cloudArr){
+        if(!cloudArr||!Array.isArray(cloudArr))return;
+        cloudArr.forEach(function(v){if(!localSet.has(v)){localSet.add(v);changed=true;}});
+    }
+    // Merge employees: update existing by id, add missing ones
+    if(cloudData.employees&&Array.isArray(cloudData.employees)){
+        cloudData.employees.forEach(function(ce){
+            var le=employees.find(function(e){return e.id===ce.id;});
+            if(!le){employees.push(ce);changed=true;}
+            // Don't overwrite existing employees — local version is authoritative
+        });
+    }
+    // Merge key-value data stores
+    if(cloudData.schedules)schedules=mergeObj(schedules,cloudData.schedules);
+    if(cloudData.attendanceData)attendanceData=mergeObj(attendanceData,cloudData.attendanceData);
+    if(cloudData.attendanceNotes)attendanceNotes=mergeObj(attendanceNotes,cloudData.attendanceNotes);
+    if(cloudData.attTimesheetData)attTimesheetData=mergeObj(attTimesheetData,cloudData.attTimesheetData);
+    if(cloudData.attConfirmations)attConfirmations=mergeObj(attConfirmations,cloudData.attConfirmations);
+    if(cloudData.attConvertOverrides)attConvertOverrides=mergeObj(attConvertOverrides,cloudData.attConvertOverrides);
+    if(cloudData.payrollOverrides)payrollOverrides=mergeObj(payrollOverrides,cloudData.payrollOverrides);
+    if(cloudData.payrollExclude)payrollExclude=mergeObj(payrollExclude,cloudData.payrollExclude);
+    if(cloudData.attendanceConfirmed)attendanceConfirmed=mergeObj(attendanceConfirmed,cloudData.attendanceConfirmed);
+    if(cloudData.taskAssignments)taskAssignments=mergeObj(taskAssignments,cloudData.taskAssignments);
+    if(cloudData.taskNotes)taskNotes=mergeObj(taskNotes,cloudData.taskNotes);
+    if(cloudData.attendanceRaw)attendanceRaw=mergeObj(attendanceRaw,cloudData.attendanceRaw);
+    // Merge cross-dept sets
+    if(cloudData.crossDeptSchedule){
+        mergeSetArr(crossDeptSchedule.kitchen,cloudData.crossDeptSchedule.kitchen);
+        mergeSetArr(crossDeptSchedule.service,cloudData.crossDeptSchedule.service);
+        mergeSetArr(crossDeptSchedule.support,cloudData.crossDeptSchedule.support);
+    }
+    if(cloudData.hiddenFromSchedule)mergeSetArr(hiddenFromSchedule,cloudData.hiddenFromSchedule);
+    // Merge holidays
+    if(cloudData.holidays)holidays=mergeObj(holidays,cloudData.holidays);
+    if(cloudData.holidaysExtra)holidaysExtra=mergeObj(holidaysExtra,cloudData.holidaysExtra);
+    return changed;
+}
 function _buildDataObj(){
     return {
         employees:employees,
@@ -1121,14 +1221,22 @@ function _autoSyncFromCloud(){
             var cloudTime=new Date(res.savedAt).getTime();
             var localTime=parseInt(localStorage.getItem('_qlnv_lastSave')||'0');
             if(cloudTime>localTime+5000){
-                console.log('Cloud newer, auto-syncing...');
-                localStorage.setItem(LS_KEY,res.data);
-                localStorage.setItem('_qlnv_lastSave',String(cloudTime));
-                loadData();
-                _lastCloudSave=res.savedAt;
-                _updateSyncStatus('saved');
-                _postInit();
-                showSuccess('\u0110\u00e3 t\u1ef1 \u0111\u1ed9ng c\u1eadp nh\u1eadt t\u1eeb Cloud!');
+                console.log('Cloud newer, merging...');
+                try{
+                    var cloudData=JSON.parse(res.data);
+                    var merged=_mergeCloudData(cloudData);
+                    if(merged){
+                        var mergedJson=JSON.stringify(_buildDataObj());
+                        localStorage.setItem(LS_KEY,mergedJson);
+                        localStorage.setItem('_qlnv_lastSave',String(Date.now()));
+                        _lastCloudSave=res.savedAt;
+                        _updateSyncStatus('saved');
+                        _postInit();
+                        showSuccess('\u0110\u00e3 t\u1ef1 \u0111\u1ed9ng \u0111\u1ed3ng b\u1ed9 t\u1eeb Cloud!');
+                        // Push merged data back to cloud
+                        _scheduleCloudSave(mergedJson);
+                    }
+                }catch(ex){console.warn('Merge failed:',ex);}
             }
         }
     }).catch(function(e){console.warn('Auto-sync failed:',e);});
@@ -2090,9 +2198,13 @@ document.addEventListener('DOMContentLoaded',function(){try{
     crossDeptSchedule.kitchen.add('PTBE025');
     _postInit();
     _autoSyncFromCloud();
+    // Auto-sync every 2 minutes
+    if(CLOUD_SYNC_URL)setInterval(_autoSyncFromCloud,120000);
+    // Auto-sync when tab becomes visible again
+    document.addEventListener('visibilitychange',function(){if(!document.hidden&&CLOUD_SYNC_URL)_autoSyncFromCloud();});
 }catch(initErr){console.error('INIT ERROR:',initErr);document.title='INIT ERROR: '+initErr.message;var errBanner=document.createElement('div');errBanner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#c62828;color:white;padding:12px;font-size:14px;font-weight:700;text-align:center';errBanner.textContent='INIT ERROR: '+initErr.message+' (line '+initErr.stack+')';document.body.appendChild(errBanner);}});
 
-function switchTab(n,btn){document.querySelectorAll('.tab-content').forEach(function(e){e.classList.remove('active');});document.querySelectorAll('.tab-button').forEach(function(e){e.classList.remove('active');});document.getElementById(n).classList.add('active');btn.classList.add('active');if(n==='schedule'){reloadSchedule();updateSchedDeptCounts();}if(n==='registration')loadRegistrationView();if(n==='attendance'){loadAttendance();fetchQRAttendance();}if(n==='payroll')loadPayroll();if(n==='tasks')loadTaskView();}
+function switchTab(n,btn){document.querySelectorAll('.tab-content').forEach(function(e){e.classList.remove('active');});document.querySelectorAll('.tab-button').forEach(function(e){e.classList.remove('active');});document.getElementById(n).classList.add('active');btn.classList.add('active');if(n==='schedule'){reloadSchedule();updateSchedDeptCounts();}if(n==='registration')loadRegistrationView();if(n==='attendance'){loadAttendance();fetchQRAttendance();fetchDeviceAlerts();}if(n==='payroll')loadPayroll();if(n==='tasks')loadTaskView();}
 function translateName(){var name=document.getElementById('empName').value.trim();if(!name)return;var cn='';name.split(/\s+/).forEach(function(p){cn+=NAME_MAP[p.toLowerCase()]||p;});document.getElementById('empNameCN').value=cn;}
 function generateId(){var pos=document.getElementById('empPosition').value,type=document.getElementById('empType').value;if(!pos||!type){document.getElementById('empId').value='';return;}var cfg=POSITION_CONFIG[pos];if(!cfg)return;var prefix=type==='Partime'?'PT'+cfg.prefix:cfg.prefix;var max=0;employees.forEach(function(e){if(e.id.startsWith(prefix)){var n=parseInt(e.id.replace(prefix,''));if(!isNaN(n)&&n>max)max=n;}});document.getElementById('empId').value=prefix+String(max+1).padStart(3,'0');}
 function onPositionChange(){var p=document.getElementById('empPosition').value,c=POSITION_CONFIG[p];document.getElementById('empDept').value=c?c.dept:'';if(!editingEmpId)generateId();}
@@ -4021,11 +4133,21 @@ function timeDiffMinutes(t1,t2){if(!t1||!t2)return 0;var a=t1.split(':').map(Num
 function setAttSubView(mode){
     attSubView=mode;
     document.querySelectorAll('.att-subtab').forEach(function(b){b.classList.remove('active');});
-    var labels={'schedule':'Lịch làm','actual':'Giờ thực','convert':'Quy đổi'};
+    var labels={'schedule':'Lịch làm','actual':'Giờ thực','convert':'Quy đổi','deviceAlert':'Cảnh báo TB'};
     document.querySelectorAll('.att-subtab').forEach(function(b){if(b.textContent.indexOf(labels[mode])>=0)b.classList.add('active');});
     var tb=document.getElementById('attActualToolbar');
     if(tb)tb.style.display=mode==='actual'?'flex':'none';
-    loadAttendance();
+    var daView=document.getElementById('deviceAlertView');
+    var attGrid=document.getElementById('attendanceGrid');
+    if(mode==='deviceAlert'){
+        if(daView)daView.style.display='block';
+        if(attGrid)attGrid.style.display='none';
+        if(!deviceAlertData.length)fetchDeviceAlerts();
+    }else{
+        if(daView)daView.style.display='none';
+        if(attGrid)attGrid.style.display='';
+        loadAttendance();
+    }
 }
 
 function attPrev(){var d2=document.getElementById('attendanceMonth'),p=d2.value.split('-'),dt2=new Date(p[0],p[1]-2,1);d2.value=dt2.getFullYear()+'-'+String(dt2.getMonth()+1).padStart(2,'0');loadAttendance();}
@@ -4134,7 +4256,7 @@ function buildAttSchedule(title,cls,emps,dateList,mi){
                 }
             }else if(sh&&!sh.start){val='X';bg='#ffcdd2';}
             var _hasActual=attTimesheetData[dk]&&attTimesheetData[dk].checkin;
-            h+='<td data-eid="'+emp.id+'" data-day="'+day+'" data-mi="'+mi+'" data-dept="'+emp.dept+'" data-attdk="'+dk+'" onmousedown="attCellMouseDown(this,event)" onmouseover="attCellMouseOver(this,event)" style="padding:1px;text-align:center;font-size:8px;border:1px solid #eee;background:'+(we&&!val?'#f5f5f5':bg)+';font-weight:'+(val?'600':'400')+';cursor:pointer" onclick="event.stopPropagation();showShiftDropdown(this)">'+val+(_hasActual?'<div style=\'font-size:8px;color:#1565c0;margin-top:1px\'>✓'+attTimesheetData[dk].checkin+'</div>':(attConfirmations[dk]?'<div style=\'font-size:10px;color:#4caf50;text-align:center\'>✓</div>':''))+'</td>';
+            h+='<td data-eid="'+emp.id+'" data-day="'+day+'" data-mi="'+mi+'" data-dept="'+_attDept+'" data-homedept="'+(emp._originalDept||emp.dept)+'" data-attdk="'+dk+'" onmousedown="attCellMouseDown(this,event)" onmouseover="attCellMouseOver(this,event)" style="padding:1px;text-align:center;font-size:8px;border:1px solid #eee;background:'+(we&&!val?'#f5f5f5':bg)+';font-weight:'+(val?'600':'400')+';cursor:pointer" onclick="event.stopPropagation();showShiftDropdown(this)">'+val+(_hasActual?'<div style=\'font-size:8px;color:#1565c0;margin-top:1px\'>✓'+attTimesheetData[dk].checkin+'</div>':(attConfirmations[dk]?'<div style=\'font-size:10px;color:#4caf50;text-align:center\'>✓</div>':''))+'</td>';
         });
         var normalDisplay;if(emp.wageType==='monthly_fixed'){var _dOff=emp.fixedDaysOff!=null?emp.fixedDaysOff:1;var _rd=getWorkDaysInMonth(parseInt(mi.split('-')[0]),parseInt(mi.split('-')[1]),_dOff);normalDisplay=Math.round(twNormal)+'/'+_rd;}else{normalDisplay=isFTSection?twNormal.toFixed(1)+'/26':twNormal.toFixed(1)+'h';}
         h+='<td style="padding:2px;border:1px solid #eee;font-weight:700;font-size:9px;background:#f0fff0;color:#2e7d32;text-align:center">'+normalDisplay+'</td>';
@@ -4736,7 +4858,7 @@ function showShiftDropdown(td){
         h+='</div>';
     }
     // Quick preset buttons
-    var presets=emp&&emp.dept==='Bếp'?pinnedShiftsK:pinnedShiftsSV;
+    var presets=(dept==='Bếp'||(emp&&emp.dept==='Bếp'))?pinnedShiftsK:pinnedShiftsSV;
     h+='<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px">';
     presets.forEach(function(p,i){
         var sel=hasShiftInKey(dk,p.s,p.e);
@@ -5219,15 +5341,68 @@ function syncScheduleToAttendance(){
 
 function exportAttendance(){
     var mi=document.getElementById('attendanceMonth').value;if(!mi)return;
-    var parts=mi.split('-'),y=parts[0],m=parts[1],days=new Date(y,m,0).getDate();
-    var c='BP,NV,Loại,'+Array.from({length:days},function(_,i){return i+1;}).join(',')+',Công,Nghỉ\n';
-    employees.filter(function(e){return !e.endDate;}).forEach(function(e){
-        var r='"'+e.dept+'","'+e.name+'",'+e.type;var tot=0,lv=0;
-        for(var i=1;i<=days;i++){
-            var k=mi+'-'+String(i).padStart(2,'0')+'-'+e.id;var v=attendanceData[k]||'';
-            r+=','+v;if(v){var vu=v.toUpperCase();if(['X','KP','ĐX','DX','P'].includes(vu))lv++;else{var n=parseFloat(v);if(!isNaN(n))tot+=n;}}
-        }
-        r+=','+tot.toFixed(1)+','+lv;c+=r+'\n';
+    var parts=mi.split('-'),y=parseInt(parts[0]),m=parseInt(parts[1]),days=new Date(y,m,0).getDate();
+    var dateList=[];for(var d=1;d<=days;d++)dateList.push(new Date(y,m-1,d));
+    // Header row
+    var c='"Bộ phận","Mã NV","Họ tên","Chức vụ","Loại",';
+    c+=Array.from({length:days},function(_,i){return i+1;}).join(',')+',';
+    c+='"Tổng cộng","Tổng công","Tăng ca","PN","VR","KP","Trễ (phút)","Lễ"\n';
+    // Get active employees for this month
+    var emps=employees.filter(function(e){return isEmpActiveInMonth(e,y,m);});
+    emps.forEach(function(emp){
+        var effH=getEffectiveHours(emp)||9;
+        var ws=getWS(emp);
+        var _attDept=emp.dept;
+        // Compute per-day data (same logic as buildAttConvert)
+        var ncTotal=0,otTotal=0,leTotal=0,pnTotal=0,vrTotal=0,kpTotal=0,lateTotal=0;
+        var ncData=[],otData=[],leData=[];
+        var dayValues=[];
+        dateList.forEach(function(dd){
+            var day=dd.getDate();
+            var dk=schedKey(mi+'-'+String(day).padStart(2,'0'),emp.id,_attDept,emp._originalDept||emp.dept);
+            var sh=schedules[dk];var raw=attTimesheetData[dk];
+            var hrs=raw&&raw.hours?raw.hours:(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
+            var nc=0,ot=0,le=0,pn=0,vr=0,kp=0,late2=0;
+            var ovr=attConvertOverrides[dk]||{};
+            var attV=attendanceData[dk]||'';var vu=attV.toUpperCase();
+            var _dateStr=mi+'-'+String(day).padStart(2,'0');
+            var _holMul=getHolidayMultiplier(_dateStr);
+            if(ovr.nc!==undefined){nc=ovr.nc;if(ovr.ot===undefined&&hrs>ws.standardHours){ot=hrs-ws.standardHours;}}
+            else if(vu==='L'||(_holMul>0&&hrs>0)){if(emp.wageType==='monthly_fixed'){le=ws.effectiveHours||effH;}else if(emp.type==='Fulltime'){var _leEff2=hrs>=ws.standardHours?(ws.effectiveHours||effH):Math.max(0,hrs-(ws.breakHours||0));le=_leEff2;if(hrs>ws.standardHours){ot=hrs-ws.standardHours;}}else{le=hrs>0?hrs:0;}}
+            else if(vu==='X'||vu==='P'){pn=1;}
+            else if(vu==='KP'){kp=1;}
+            else if(hrs>0){nc=hrs;if(hrs>=ws.standardHours){ot=hrs-ws.standardHours;nc=ws.effectiveHours||effH;}else{nc=Math.max(0,hrs-(ws.breakHours||0));}}
+            if(ovr.ot!==undefined)ot=ovr.ot;
+            if(ovr.le!==undefined)le=ovr.le;
+            if(ovr.pn!==undefined)pn=ovr.pn;
+            if(ovr.vr!==undefined)vr=ovr.vr;
+            if(ovr.kp!==undefined)kp=ovr.kp;
+            if(ovr.late!==undefined){late2=ovr.late;}
+            else{var rawT2=attTimesheetData[dk];if(rawT2&&rawT2.checkin&&sh&&sh.start){var schedStart2=sh.start.indexOf(',')>=0?sh.start.split(',')[0]:sh.start;var lm2=timeDiffMinutes(schedStart2,rawT2.checkin);if(lm2>0){late2=lm2;}}}
+            ncTotal+=nc;otTotal+=ot;leTotal+=le;pnTotal+=pn;vrTotal+=vr;kpTotal+=kp;lateTotal+=late2;
+            ncData.push(nc);otData.push(ot);leData.push(le);
+            // Day display value
+            if(nc>0)dayValues.push(nc%1===0?String(nc):nc.toFixed(1));
+            else if(le>0)dayValues.push('L');
+            else if(pn>0)dayValues.push('X');
+            else if(kp>0)dayValues.push('KP');
+            else dayValues.push('');
+        });
+        var ncDays=ncTotal/effH;
+        if(emp.wageType==='monthly_fixed'){ncDays=0;ncData.forEach(function(v){if(v>0)ncDays++;});leData.forEach(function(v){if(v>0)ncDays++;});}
+        var leDays=0;leData.forEach(function(v){if(v>0)leDays++;});
+        // Build row
+        var r='"'+emp.dept+'","'+emp.id+'","'+emp.name+'","'+emp.position+'","'+emp.type+'"';
+        dayValues.forEach(function(v){r+=','+v;});
+        r+=','+ncDays.toFixed(1); // Tổng cộng
+        r+=','+ncDays.toFixed(1); // Tổng công
+        r+=','+(otTotal>0?otTotal.toFixed(1):'0'); // Tăng ca
+        r+=','+pnTotal; // PN
+        r+=','+vrTotal; // VR
+        r+=','+kpTotal; // KP
+        r+=','+lateTotal; // Trễ (phút)
+        r+=','+leDays; // Lễ
+        c+=r+'\n';
     });
     downloadCSV(c,'cong-'+mi+'.csv');
 }
@@ -7030,12 +7205,160 @@ function exportPayroll(){
 function formatCurrency(n){if(!n)return'0';return new Intl.NumberFormat('vi-VN').format(Math.round(n));}
 function showSuccess(m){var e=document.getElementById('successMessage');document.getElementById('successText').textContent=m;e.classList.add('show');setTimeout(function(){e.classList.remove('show');},2500);saveData();}
 function closeModal(id){document.getElementById(id).classList.remove('active');}
-function downloadCSV(c,f){var a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(c);a.download=f;a.click();}
+function downloadCSV(c,f){var a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent('﻿'+c);a.download=f;a.click();}
 function todayStr(){var t=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Ho_Chi_Minh'}));return String(t.getDate()).padStart(2,'0')+'/'+String(t.getMonth()+1).padStart(2,'0')+'/'+t.getFullYear();}
 function vnNow(){return new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Ho_Chi_Minh'}));}
 function formatDateVN(d){if(!d)return'';if(typeof d==='string')return d;return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();}
 // IMPORT CHẤM CÔNG TỪ GOOGLE SHEETS (REALTIME)
 var CC_API_URL='https://script.google.com/macros/s/AKfycbycbK9uB4DiQ8D6x20RrFlZnbPXTxz5zczFxFOGxfWqjkGRoa41OjonOy0PYdPTkq9w/exec';
+// ===== DEVICE ALERTS — Cảnh báo thiết bị lạ 設備警報 =====
+var deviceAlertData=[];
+function fetchDeviceAlerts(){
+    var statusEl=document.getElementById('daStatus');
+    if(statusEl)statusEl.innerHTML='<i class="fas fa-spinner fa-spin"></i> Đang tải...';
+    var cbName='_daCB_'+Date.now();
+    var sheetId=qrSheetConfig.fileId; // same file as ChamCong
+    var url='https://docs.google.com/spreadsheets/d/'+sheetId+'/gviz/tq?tqx=out:json;responseHandler:'+cbName+'&sheet=DeviceAlerts';
+    window[cbName]=function(resp){
+        try{
+            var rows=resp.table.rows;
+            deviceAlertData=[];
+            for(var i=0;i<rows.length;i++){
+                var cells=rows[i].c;
+                if(!cells||cells.length<8)continue;
+                var ts=cells[0]?cells[0].v:'';
+                var empId=cells[1]?(cells[1].v||'').toString().trim():'';
+                var empName=cells[2]?cells[2].v:'';
+                var deviceId=cells[3]?cells[3].v:'';
+                var alertType=cells[4]?cells[4].v:'';
+                var action=cells[5]?cells[5].v:'';
+                var dateStr=cells[6]?cells[6].v:'';
+                var timeStr=cells[7]?cells[7].v:'';
+                if(!empId&&!ts)continue;
+                deviceAlertData.push({
+                    timestamp:ts, empId:empId, empName:empName,
+                    deviceId:deviceId, alertType:alertType,
+                    action:action, date:dateStr, time:timeStr
+                });
+            }
+            // Sort newest first
+            deviceAlertData.reverse();
+            populateDAFilter();
+            renderDeviceAlerts();
+            if(statusEl)statusEl.innerHTML='<i class="fas fa-check-circle" style="color:#2e7d32"></i> '+deviceAlertData.length+' cảnh báo';
+            // Update badge
+            updateDABadge();
+        }catch(err){
+            console.error('DeviceAlert parse error:',err);
+            if(statusEl)statusEl.innerHTML='<i class="fas fa-exclamation-triangle" style="color:#c62828"></i> Lỗi hoặc chưa có sheet DeviceAlerts';
+            deviceAlertData=[];
+            renderDeviceAlerts();
+        }
+        delete window[cbName];
+    };
+    var s=document.createElement('script');
+    s.src=url;
+    s.onerror=function(){
+        if(statusEl)statusEl.innerHTML='<i class="fas fa-exclamation-triangle" style="color:#c62828"></i> Không thể kết nối';
+        delete window[cbName];
+    };
+    document.body.appendChild(s);
+}
+
+function populateDAFilter(){
+    var sel=document.getElementById('daFilterEmp');
+    if(!sel)return;
+    var current=sel.value;
+    sel.innerHTML='<option value="">Tất cả 全部</option>';
+    var empSet={};
+    deviceAlertData.forEach(function(d){
+        if(d.empId&&!empSet[d.empId]){
+            empSet[d.empId]=d.empName||d.empId;
+        }
+    });
+    Object.keys(empSet).sort().forEach(function(id){
+        var o=document.createElement('option');
+        o.value=id;
+        o.textContent=id+' - '+empSet[id];
+        sel.appendChild(o);
+    });
+    if(current)sel.value=current;
+}
+
+function renderDeviceAlerts(){
+    var wrapper=document.getElementById('daTableWrapper');
+    if(!wrapper)return;
+    var filterEmp=document.getElementById('daFilterEmp');
+    var empFilter=filterEmp?filterEmp.value:'';
+    var filtered=deviceAlertData;
+    if(empFilter){
+        filtered=deviceAlertData.filter(function(d){return d.empId===empFilter;});
+    }
+    if(filtered.length===0){
+        wrapper.innerHTML='<div class="da-empty"><i class="fas fa-shield-alt" style="font-size:40px;color:#ddd;display:block;margin-bottom:10px"></i>'+(deviceAlertData.length===0?'Chưa có cảnh báo nào — hệ thống an toàn!<br><span style="font-size:11px;color:#bbb">目前沒有警報 — 系統安全！</span>':'Không có cảnh báo cho NV này')+'</div>';
+        updateDASummary(filtered);
+        return;
+    }
+    var html='<table class="da-table"><thead><tr>';
+    html+='<th>#</th><th>Thời gian 時間</th><th>Mã NV 員工</th><th>Tên NV 姓名</th><th>Device ID 設備</th><th>Loại 類型</th><th>Hành động 動作</th><th>Ngày 日期</th><th>Giờ 時間</th>';
+    html+='</tr></thead><tbody>';
+    // Check if today
+    var today=todayStr().split('/');
+    var todayKey=today[0]+'/'+today[1]+'/'+today[2];
+    for(var i=0;i<filtered.length;i++){
+        var d=filtered[i];
+        var isNew=d.date===todayKey||d.timestamp.indexOf(todayKey)>=0;
+        var actionIcon=d.action==='checkin'?'<i class="fas fa-sign-in-alt" style="color:#2e7d32"></i>':'<i class="fas fa-sign-out-alt" style="color:#c62828"></i>';
+        var actionText=d.action==='checkin'?'Vào ca 上班':'Tan ca 下班';
+        var shortDevice=d.deviceId?(d.deviceId.length>20?d.deviceId.substring(0,20)+'…':d.deviceId):'';
+        html+='<tr'+(isNew?' class="da-new"':'')+'>';
+        html+='<td>'+(i+1)+'</td>';
+        html+='<td>'+escH(d.timestamp)+'</td>';
+        html+='<td><strong>'+escH(d.empId)+'</strong></td>';
+        html+='<td>'+escH(d.empName)+'</td>';
+        html+='<td title="'+escH(d.deviceId)+'" style="font-family:monospace;font-size:10px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escH(shortDevice)+'</td>';
+        html+='<td><span style="background:#fff3e0;padding:2px 6px;border-radius:4px;font-size:10px;color:#e65100"><i class="fas fa-exclamation-triangle"></i> '+escH(d.alertType||'unknown_device')+'</span></td>';
+        html+='<td>'+actionIcon+' '+actionText+'</td>';
+        html+='<td>'+escH(d.date)+'</td>';
+        html+='<td>'+escH(d.time)+'</td>';
+        html+='</tr>';
+    }
+    html+='</tbody></table>';
+    wrapper.innerHTML=html;
+    updateDASummary(filtered);
+}
+
+function updateDASummary(filtered){
+    var summaryEl=document.getElementById('daSummary');
+    if(!summaryEl)return;
+    if(!filtered||filtered.length===0){summaryEl.innerHTML='';return;}
+    // Count unique employees and unique devices
+    var empSet={},devSet={},todayCount=0;
+    var today=todayStr();
+    filtered.forEach(function(d){
+        if(d.empId)empSet[d.empId]=1;
+        if(d.deviceId)devSet[d.deviceId]=1;
+        if(d.date===today)todayCount++;
+    });
+    summaryEl.innerHTML='<div class="da-stat"><div class="da-stat-label">Tổng cảnh báo 總警報</div><div class="da-stat-value">'+filtered.length+'</div></div>'
+        +'<div class="da-stat"><div class="da-stat-label">NV liên quan 相關員工</div><div class="da-stat-value">'+Object.keys(empSet).length+'</div></div>'
+        +'<div class="da-stat"><div class="da-stat-label">Thiết bị lạ 異常設備</div><div class="da-stat-value">'+Object.keys(devSet).length+'</div></div>'
+        +'<div class="da-stat"><div class="da-stat-label">Hôm nay 今天</div><div class="da-stat-value" style="color:'+(todayCount>0?'#c62828':'#2e7d32')+'">'+todayCount+'</div></div>';
+}
+
+function updateDABadge(){
+    var badge=document.getElementById('daAlertBadge');
+    if(!badge)return;
+    if(deviceAlertData.length>0){
+        badge.textContent=deviceAlertData.length>99?'99+':deviceAlertData.length;
+        badge.style.display='inline-flex';
+    }else{
+        badge.style.display='none';
+    }
+}
+
+function escH(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
 function importChamCong(){
     var mi=document.getElementById('attendanceMonth').value;
     if(!mi){alert('Vui lòng chọn tháng trước!');return;}
@@ -7886,132 +8209,4 @@ function _ensureXLSX(cb){
     s.onerror=function(){alert('Không tải được thư viện SheetJS');};
     document.head.appendChild(s);
 }
-function _downloadXLSX(wb,filename){
-    var wbout=XLSX.write(wb,{bookType:'xlsx',type:'array'});
-    var blob=new Blob([wbout],{type:'application/octet-stream'});
-    var a=document.createElement('a');a.href=URL.createObjectURL(blob);
-    a.download=filename;a.click();URL.revokeObjectURL(a.href);
-}
-function _fmtDate(d){if(!d)return '';var p=d.split('-');return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):d;}
-function _fmtCurr(v){var n=parseFloat(v)||0;return n.toLocaleString('vi-VN');}
-
-// 1. Export Employees
-function exportEmployeesExcel(){_ensureXLSX(function(){
-    var active=employees.filter(function(e){return !e.endDate;});
-    var resigned=employees.filter(function(e){return !!e.endDate;});
-    var all=active.concat(resigned);
-    var rows=[['Mã NV','Họ tên','Tên TQ','Bộ phận','Chức vụ','Loại','SĐT','Ngày vào','Ngày nghỉ','Trạng thái','Lương CB','Trách nhiệm']];
-    all.forEach(function(e){
-        rows.push([e.id,e.name,e.nameCN||'',e.dept,e.position,e.type,e.phone||'',_fmtDate(e.startDate),e.endDate?_fmtDate(e.endDate):'',e.endDate?'Thôi việc':'Đang làm',(e.baseSalary||0),(e.responsibility||0)]);
-    });
-    var ws=XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols']=[{wch:8},{wch:20},{wch:12},{wch:10},{wch:14},{wch:10},{wch:12},{wch:12},{wch:12},{wch:10},{wch:14},{wch:14}];
-    var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Nhân viên');
-    _downloadXLSX(wb,'NhanVien_'+new Date().toISOString().slice(0,10)+'.xlsx');
-    showSuccess('Đã tải Excel danh sách nhân viên!');
-});}
-
-// 2. Export Schedule
-function exportScheduleExcel(){_ensureXLSX(function(){
-    var mi=document.getElementById('scheduleMonth').value;
-    if(!mi){showError('Chọn tháng trước');return;}
-    var dept=currentSchedDept||'kitchen';
-    var deptName=dept==='kitchen'?'Bếp':dept==='service'?'Phục vụ':'Hỗ trợ khác';
-    var yr=parseInt(mi.split('-')[0]),mo=parseInt(mi.split('-')[1]);
-    var daysInMonth=new Date(yr,mo,0).getDate();
-    var dates=[];for(var d=1;d<=daysInMonth;d++){var ds=yr+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');dates.push(ds);}
-    var emps=[];
-    if(dept==='kitchen'){emps=employees.filter(function(e){return !e.endDate&&(e.dept==='Bếp'||crossDeptSchedule.kitchen.has(e.id));});}
-    else if(dept==='service'){emps=employees.filter(function(e){return !e.endDate&&(e.dept==='Phục vụ'||crossDeptSchedule.service.has(e.id));});}
-    else{emps=employees.filter(function(e){return !e.endDate&&crossDeptSchedule.support.has(e.id);});}
-    var header=['NV'];dates.forEach(function(ds){var dn=new Date(ds);var dayNames=['CN','T2','T3','T4','T5','T6','T7'];header.push(parseInt(ds.split('-')[2])+' '+dayNames[dn.getDay()]);});
-    var rows=[header];
-    emps.forEach(function(emp){
-        var row=[emp.name];
-        dates.forEach(function(ds){
-            var keys=schedKey(ds,emp.id,deptName,emp.dept);
-            var sc=schedules[keys];
-            if(sc&&sc.start){row.push(sc.start+'-'+sc.end);}
-            else{row.push('');}
-        });
-        rows.push(row);
-    });
-    var ws=XLSX.utils.aoa_to_sheet(rows);
-    var cols=[{wch:16}];for(var i=0;i<dates.length;i++)cols.push({wch:10});
-    ws['!cols']=cols;
-    var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,deptName);
-    _downloadXLSX(wb,'LichLam_'+deptName+'_'+mi+'.xlsx');
-    showSuccess('Đã tải Excel lịch làm '+deptName+'!');
-});}
-
-// 3. Export Registration
-function exportRegistrationExcel(){_ensureXLSX(function(){
-    var wp=document.getElementById('regWeekPicker').value;
-    if(!wp){showError('Chọn tuần trước');return;}
-    var ws_date=new Date(wp);var dayOfWeek=ws_date.getDay();
-    var monday=new Date(ws_date);monday.setDate(monday.getDate()-((dayOfWeek+6)%7));
-    var dates=[];for(var i=0;i<7;i++){var d=new Date(monday);d.setDate(d.getDate()+i);dates.push(normalizeDate(d));}
-    var dayNames=['T2','T3','T4','T5','T6','T7','CN'];
-    var header=['NV','BP'];dates.forEach(function(ds,i){header.push(dayNames[i]+' '+parseInt(ds.split('-')[2])+'/'+parseInt(ds.split('-')[1]));});
-    var rows=[header];
-    var activeEmps=employees.filter(function(e){return !e.endDate;});
-    activeEmps.forEach(function(emp){
-        var hasAny=false;var row=[emp.name,emp.dept];
-        dates.forEach(function(ds){
-            var key='reg_'+ds+'_'+emp.id;
-            var r=schedules[key];
-            if(r&&r.start){row.push(r.start+'-'+r.end);hasAny=true;}
-            else{row.push('');}
-        });
-        if(hasAny)rows.push(row);
-    });
-    var ws=XLSX.utils.aoa_to_sheet(rows);
-    var cols=[{wch:16},{wch:10}];for(var i=0;i<7;i++)cols.push({wch:12});
-    ws['!cols']=cols;
-    var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Đăng ký ca');
-    _downloadXLSX(wb,'DangKyCa_'+wp+'.xlsx');
-    showSuccess('Đã tải Excel đăng ký ca!');
-});}
-
-// 4. Export Payroll
-function exportPayrollExcel(){_ensureXLSX(function(){
-    var mi=document.getElementById('payrollMonth').value;
-    if(!mi){showError('Chọn tháng trước');return;}
-    // Scrape payroll tables from DOM
-    var tables=document.querySelectorAll('#prTabSalary table, #prTabPaysheet table');
-    if(!tables.length){showError('Chuyển sang tab Tính lương hoặc Bảng lương trước');return;}
-    var wb=XLSX.utils.book_new();
-    var sheetIdx=0;
-    var sheetNames=['Bếp_FT','Bếp_PT','PV_FT','PV_PT','HT_FT','HT_PT','RC','TongHop'];
-    tables.forEach(function(tbl){
-        var rows=[];
-        tbl.querySelectorAll('tr').forEach(function(tr){
-            var row=[];
-            tr.querySelectorAll('th,td').forEach(function(cell){
-                var txt=cell.innerText.trim().replace(/\s+/g,' ');
-                var num=txt.replace(/\./g,'').replace(',','.');
-                if(/^\d+$/.test(num)&&num.length>3){row.push(parseInt(num));}
-                else{row.push(txt);}
-            });
-            rows.push(row);
-        });
-        if(rows.length>0){
-            var sn=sheetIdx<sheetNames.length?sheetNames[sheetIdx]:'Sheet'+(sheetIdx+1);
-            var ws=XLSX.utils.aoa_to_sheet(rows);
-            try{XLSX.utils.book_append_sheet(wb,ws,sn);}catch(e){XLSX.utils.book_append_sheet(wb,ws,sn+'_'+sheetIdx);}
-            sheetIdx++;
-        }
-    });
-    if(sheetIdx===0){showError('Không tìm thấy bảng lương. Hãy mở tab Tính lương trước.');return;}
-    _downloadXLSX(wb,'BangLuong_'+mi+'.xlsx');
-    showSuccess('Đã tải Excel bảng lương!');
-});}
-document.querySelectorAll('.modal').forEach(function(m){m.addEventListener('click',function(e){if(e.target===this)this.classList.remove('active');});});
-document.addEventListener('click',function(e){
-    if(!e.target.closest('.shift-picker')&&!e.target.closest('.schedule-cell')&&!e.target.closest('.qb-item')&&!e.target.closest('.btn[onclick*="openCustomShiftPicker"]')){
-        hideShiftPicker();
-    }
-});
-</script>
-</body>
-</html>                            
+function _downloadXLS
