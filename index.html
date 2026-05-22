@@ -113,7 +113,9 @@ tbody tr.selected{background:#e3f2fd}
         .att-cell-selected{outline:2px solid #2196f3 !important;outline-offset:-1px;background:#bbdefb !important;z-index:1;position:relative}
 td.cell-selected{outline:3px solid #ff6f00 !important;outline-offset:-2px;box-shadow:0 0 8px rgba(255,111,0,.5) !important}
 .sg-cell.weekend{background:#fffbef}
-.sg-cell.brush-active{outline:2px solid var(--info);background:#e3f2fd}
+.sg-cell.weekend.off{background:#333;color:#333}
+.sg-cell.brush-active{outline:3px solid #ff9800;outline-offset:-3px;z-index:1}
+.sg-cell.cell-selected{outline:3px solid #1565c0!important;outline-offset:-3px;z-index:2}
 .sg-stat{padding:2px;text-align:center;font-size:9px;border-right:1px solid #f0f0f0;font-weight:700}
 .sg-stat-label{padding:2px 3px;font-weight:700;font-size:8px;border-right:1px solid var(--border);background:#f0f0f0}
 .add-emp-row{padding:2px 3px;border-bottom:1px solid #eee;border-right:1px solid var(--border);background:#f0fff0;display:flex;align-items:center;gap:3px;grid-column:1/-1;cursor:pointer;font-size:9px;color:var(--success);font-weight:600}
@@ -349,15 +351,15 @@ td.cell-selected{outline:3px solid #ff6f00 !important;outline-offset:-2px;box-sh
                 <button class="btn btn-secondary btn-sm" onclick="schedNext()"><i class="fas fa-chevron-right"></i></button>
             </div>
             <div class="toolbar-group">
-                <button class="btn btn-outline btn-sm" onclick="showHiddenEmps()"><i class="fas fa-eye"></i> Ẩn</button>
-                <button class="btn btn-outline btn-sm" onclick="openCustomShiftPicker()"><i class="fas fa-clock"></i> Tự nhập</button>
+                <button class="btn btn-outline btn-sm" onclick="showHiddenEmps()"><i class="fas fa-eye"></i> Ẩn 隱藏</button>
+                <button class="btn btn-outline btn-sm" onclick="openCustomShiftPicker()"><i class="fas fa-clock"></i> Tự nhập 自訂</button>
             </div>
             <div class="toolbar-group">
-                <button class="btn btn-sm" onclick="bossPublishSchedule()" style="background:#2e7d32;color:white"><i class="fas fa-paper-plane"></i> Phát lịch</button>
-                <button class="btn btn-sm" onclick="bossViewRegistrations()" style="background:#1565c0;color:white"><i class="fas fa-list-check"></i> Đăng ký ca</button>
-                <button class="btn btn-sm" onclick="bossSyncEmployees()" style="background:#6a1b9a;color:white"><i class="fas fa-sync"></i> Đồng bộ NV</button>
-                <button class="btn btn-sm" onclick="cloudSaveNow()" style="background:#1565c0;color:white" title="Lưu toàn bộ dữ liệu lên Google Sheets"><i class="fas fa-cloud-upload-alt"></i> Lưu Cloud</button>
-                <button class="btn btn-sm" onclick="cloudLoadNow()" style="background:#00838f;color:white" title="Tải dữ liệu từ Google Sheets"><i class="fas fa-cloud-download-alt"></i> Tải Cloud</button>
+                <button class="btn btn-sm" onclick="openPublishScheduleModal()" style="background:#2e7d32;color:white"><i class="fas fa-paper-plane"></i> Phát lịch 發布排班</button>
+                <button class="btn btn-sm" onclick="bossViewRegistrations()" style="background:#1565c0;color:white"><i class="fas fa-list-check"></i> Đăng ký ca 登記班</button>
+                <button class="btn btn-sm" onclick="bossSyncEmployees()" style="background:#6a1b9a;color:white"><i class="fas fa-sync"></i> Đồng bộ NV 同步員工</button>
+                <button class="btn btn-sm" onclick="cloudSaveNow()" style="background:#1565c0;color:white" title="Lưu toàn bộ dữ liệu lên Google Sheets"><i class="fas fa-cloud-upload-alt"></i> Lưu Cloud 雲端儲存</button>
+                <button class="btn btn-sm" onclick="cloudLoadNow()" style="background:#00838f;color:white" title="Tải dữ liệu từ Google Sheets"><i class="fas fa-cloud-download-alt"></i> Tải Cloud 雲端載入</button>
                 <span id="cloudSyncStatus" style="margin-left:4px;cursor:help" title="Cloud sync status"></span>
                 <button class="btn btn-sm" onclick="downloadScheduleImage()" style="background:#607d8b;color:white" title="Tải ảnh lịch làm"><i class="fas fa-camera"></i> Tải ảnh</button>
                 <button class="btn btn-sm" onclick="exportScheduleExcel()" style="background:#1b5e20;color:white" title="Tải Excel lịch làm"><i class="fas fa-file-excel"></i> Excel</button>
@@ -373,16 +375,20 @@ td.cell-selected{outline:3px solid #ff6f00 !important;outline-offset:-2px;box-sh
         </div>
         </div>
         <div id="brushIndicator" style="display:none;background:#fff3e0;border:2px solid #ff9800;border-radius:8px;padding:8px 16px;margin-bottom:8px;font-size:13px;font-weight:700;color:#e65100;text-align:center"></div>
+<div id="taskLegendBar" style="background:#f8f9fa;border:1px solid #e0e0e0;border-radius:6px;padding:6px 10px;margin-bottom:6px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+        <span style="font-weight:700;color:#333;font-size:10px;margin-right:4px"><i class="fas fa-tags"></i> Công việc 任務:</span>
+        <span id="taskLegendItems" style="display:flex;flex-wrap:wrap;gap:4px"></span>
+    </div>
 <div id="scheduleContent"></div>
     </div>
     <!-- TAB 3: TASKS -->
     <!-- TAB: ĐĂNG KÝ CA -->
     <div id="registration" class="tab-content">
-        <div class="toolbar">
-            <div class="toolbar-group"><label>Tuần:</label><input type="date" id="regWeekPicker" onchange="loadRegistrationView()"></div>
+        <div class="toolbar" style="flex-wrap:wrap;gap:8px">
+            <div class="toolbar-group"><label>Từ 從:</label><input type="text" id="regStartDate" placeholder="dd/mm/yyyy" style="width:110px;text-align:center" onchange="onRegPeriodChange()" onclick="openDatePicker(this)" readonly></div>
+            <div class="toolbar-group"><label>Đến 至:</label><input type="text" id="regEndDate" placeholder="dd/mm/yyyy" style="width:110px;text-align:center" onchange="onRegPeriodChange()" onclick="openDatePicker(this)" readonly></div>
             <div class="toolbar-group">
-                <button class="btn btn-secondary btn-sm" onclick="regWeekPrev()"><i class="fas fa-chevron-left"></i></button>
-                <button class="btn btn-secondary btn-sm" onclick="regWeekNext()"><i class="fas fa-chevron-right"></i></button>
+                <button class="btn btn-sm" onclick="setRegPeriodAndPublish()" style="background:#6a1b9a;color:white" title="Đặt khoảng thời gian và phát cho NV"><i class="fas fa-calendar-check"></i> Đặt & Phát 設定發布</button>
             </div>
             <div class="toolbar-group">
                 <span id="regWeekLabel" style="font-size:12px;font-weight:600;color:#555"></span><span id="regLockStatus" style="font-size:11px;font-weight:700;margin-left:8px"></span>
@@ -474,6 +480,7 @@ td.cell-selected{outline:3px solid #ff6f00 !important;outline-offset:-2px;box-sh
             <div class="toolbar-group"><label>Tháng:</label><input type="month" id="payrollMonth" onchange="loadPayroll()"></div>
             <div class="toolbar-group">
                 <button class="btn btn-sm" onclick="bossPublishPayroll()" style="background:#2e7d32;color:white"><i class="fas fa-paper-plane"></i> Phát bảng lương 發薪</button>
+                <button class="btn btn-sm" onclick="bossUnpublishPayroll()" style="background:#c62828;color:white"><i class="fas fa-undo"></i> Thu hồi 撤回</button>
                 <button class="btn btn-sm" onclick="exportPayrollExcel()" style="background:#1b5e20;color:white"><i class="fas fa-file-excel"></i> Tải Excel</button>
             </div>
         </div>
@@ -556,21 +563,58 @@ td.cell-selected{outline:3px solid #ff6f00 !important;outline-offset:-2px;box-sh
             <span class="close-btn" onclick="closeModal('paysheetEmpModal')">&times;</span>
         </div>
         <div style="padding:4px 8px;display:flex;gap:8px;margin-bottom:8px">
-            <button class="btn btn-sm" onclick="copyPaysheetEmpImage()" style="background:#1565c0;color:white;border:none;padding:6px 14px;border-radius:4px;font-size:11px"><i class="fas fa-copy"></i> Copy ảnh</button>
-            <button class="btn btn-sm" onclick="downloadPaysheetEmpImage()" style="background:#2e7d32;color:white;border:none;padding:6px 14px;border-radius:4px;font-size:11px"><i class="fas fa-download"></i> Tải ảnh</button>
-            <button class="btn btn-sm" onclick="copyBothPaysheetImage()" style="background:#e65100;color:white;border:none;padding:6px 14px;border-radius:4px;font-size:11px"><i class="fas fa-images"></i> Copy cả 2</button>
+            <button class="btn btn-sm" onclick="copyPaysheetEmpImage()" style="background:#1565c0;color:white;border:none;padding:6px 14px;border-radius:4px;font-size:11px"><i class="fas fa-copy"></i> Copy ảnh 複製</button>
+            <button class="btn btn-sm" onclick="downloadPaysheetEmpImage()" style="background:#2e7d32;color:white;border:none;padding:6px 14px;border-radius:4px;font-size:11px"><i class="fas fa-download"></i> Tải ảnh 下載</button>
+            <button class="btn btn-sm" onclick="downloadBothPaysheetImages()" style="background:#e65100;color:white;border:none;padding:6px 14px;border-radius:4px;font-size:11px"><i class="fas fa-download"></i> Tải cả 2 下載兩張</button>
         </div>
         <div id="paysheetEmpContent"></div>
     </div>
 </div>
+<!-- Publish Schedule Modal -->
+<div id="publishScheduleModal" class="modal"><div class="modal-content" style="max-width:550px">
+    <div class="modal-header"><span>Phát lịch làm 發布排班</span><button class="modal-close" onclick="closeModal('publishScheduleModal')">×</button></div>
+    <div style="padding:16px">
+        <div style="margin-bottom:12px">
+            <label style="font-weight:600;font-size:12px;display:block;margin-bottom:4px">Chọn khoảng thời gian 選擇時間範圍:</label>
+            <div style="display:flex;gap:8px;align-items:center">
+                <input type="date" id="pubFromDate" onchange="updatePubPreview()" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:12px;flex:1">
+                <span style="font-size:12px;color:#666">→</span>
+                <input type="date" id="pubToDate" onchange="updatePubPreview()" style="padding:6px 10px;border:1px solid #ccc;border-radius:4px;font-size:12px;flex:1">
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+            <button class="btn btn-sm btn-outline" onclick="setPubRange('thisWeek')" style="font-size:11px">Tuần này 本週</button>
+            <button class="btn btn-sm btn-outline" onclick="setPubRange('nextWeek')" style="font-size:11px">Tuần sau 下週</button>
+            <button class="btn btn-sm btn-outline" onclick="setPubRange('thisMonth')" style="font-size:11px">Tháng này 本月</button>
+        </div>
+        <div style="margin-bottom:12px">
+            <label style="font-weight:600;font-size:12px;display:block;margin-bottom:4px">Chọn nhân viên 選擇員工:</label>
+            <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
+                <select id="pubDeptFilter" onchange="pubFilterDept()" style="padding:4px 8px;border:1px solid #ccc;border-radius:4px;font-size:11px;font-weight:600">
+                    <option value="all">Tất cả 全部</option>
+                    <option value="Bếp">Bếp 廚房</option>
+                    <option value="Phục vụ">Phục vụ 服務</option>
+                </select>
+                <button class="btn btn-sm btn-outline" onclick="pubSelectAll(true)" style="font-size:10px;padding:4px 8px">Chọn tất cả 全選</button>
+                <button class="btn btn-sm btn-outline" onclick="pubSelectAll(false)" style="font-size:10px;padding:4px 8px">Bỏ chọn 取消全選</button>
+            </div>
+            <div id="pubEmpList" style="max-height:180px;overflow-y:auto;border:1px solid #e0e0e0;border-radius:6px;padding:6px;background:#fafafa"></div>
+        </div>
+        <div id="pubPreview" style="background:#f5f5f5;padding:10px;border-radius:6px;font-size:12px;margin-bottom:12px;min-height:40px;color:#666">Chọn khoảng thời gian để xem trước 選擇範圍預覽</div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+            <button class="btn btn-sm btn-outline" onclick="closeModal('publishScheduleModal')">Hủy 取消</button>
+            <button class="btn btn-sm" onclick="doPublishScheduleRange()" style="background:#2e7d32;color:white"><i class="fas fa-paper-plane"></i> Phát lịch 發布</button>
+        </div>
+    </div>
+</div></div>
 <!-- MODALS -->
 <div id="employeeModal" class="modal"><div class="modal-content">
     <div class="modal-header"><span id="modalTitle">Thêm NV 新增員工</span><button class="modal-close" onclick="closeModal('employeeModal')">×</button></div>
     <div class="emp-modal-tabs">
         <button class="emp-modal-tab active" onclick="switchEmpTab('info',this)"><i class="fas fa-user"></i> Thông tin</button>
-        <button class="emp-modal-tab" onclick="switchEmpTab('changes',this)" id="empTabChanges" style="display:none"><i class="fas fa-exchange-alt"></i> Thay đổi</button>
-        <button class="emp-modal-tab" onclick="switchEmpTab('history',this)" id="empTabHistory" style="display:none"><i class="fas fa-history"></i> Lịch sử</button>
-        <button class="emp-modal-tab" onclick="switchEmpTab('crossdept',this)" id="empTabCrossDept" style="display:none"><i class="fas fa-hands-helping"></i> Hỗ trợ BP khác</button>
+        <button class="emp-modal-tab" onclick="switchEmpTab('changes',this)" id="empTabChanges" style="display:none"><i class="fas fa-exchange-alt"></i> Thay đổi 變更</button>
+        <button class="emp-modal-tab" onclick="switchEmpTab('history',this)" id="empTabHistory" style="display:none"><i class="fas fa-history"></i> Lịch sử 歷史</button>
+        <button class="emp-modal-tab" onclick="switchEmpTab('crossdept',this)" id="empTabCrossDept" style="display:none"><i class="fas fa-hands-helping"></i> Hỗ trợ BP khác 跨部門</button>
     </div>
     <form id="employeeForm" onsubmit="saveEmployee(event)">
     <!-- TAB 1: THÔNG TIN CƠ BẢN -->
@@ -679,8 +723,9 @@ td.cell-selected{outline:3px solid #ff6f00 !important;outline-offset:-2px;box-sh
         <button class="btn btn-sm btn-outline" onclick="hideShiftPicker()">×</button>
     </div>
     <div class="sp-actions" id="spExtraActions" style="display:none">
-        <button class="btn btn-sm btn-danger" onclick="spSetOff()" style="flex:1"><i class="fas fa-ban"></i> Nghỉ</button>
-        <button class="btn btn-sm btn-outline" onclick="spClearShift()" style="flex:1"><i class="fas fa-trash"></i> Xóa ca</button>
+        <button class="btn btn-sm btn-danger" onclick="spSetOff()" style="flex:1"><i class="fas fa-ban"></i> Nghỉ 休假</button>
+        <button class="btn btn-sm btn-outline" onclick="spClearShift()" style="flex:1"><i class="fas fa-trash"></i> Xóa ca 刪班</button>
+        <button class="btn btn-sm btn-outline" onclick="spPickColor()" style="flex:1" id="spColorBtn"><i class="fas fa-palette"></i> Màu 顏色</button>
     </div>
     <div id="spTaskSection" class="sp-tasks" style="display:none">
         <div class="sp-tasks-label"><i class="fas fa-tasks"></i> Task (click để gán/bỏ)</div>
@@ -707,7 +752,7 @@ td.cell-selected{outline:3px solid #ff6f00 !important;outline-offset:-2px;box-sh
         </div>
         <div id="attConfirmStatus" style="display:none;margin-bottom:8px"></div>
         <div class="form-group"><label id="attendanceLabel">Chấm công:</label><input type="text" id="attendanceValue" placeholder="Nhập..." required><div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:8px" id="attQuickBtns"></div></div>
-        <div class="form-group"><label>Ghi chú:</label><input type="text" id="attendanceNote" placeholder="Lý do..."></div>
+        <div class="form-group"><label>Ghi chú 備註:</label><input type="text" id="attendanceNote" placeholder="Lý do..."></div>
         <div class="form-actions">
             <button type="button" class="btn btn-outline" onclick="closeModal('attendanceModal')">Hủy</button>
             <button type="button" class="btn btn-success" id="btnConfirmAtt" onclick="confirmAndSave()" style="display:none"><i class="fas fa-check-double"></i> Xác nhận</button>
@@ -717,14 +762,28 @@ td.cell-selected{outline:3px solid #ff6f00 !important;outline-offset:-2px;box-sh
 </div></div>
 
 <!-- TASK CONFIG MODAL -->
-<div id="taskConfigModal" class="modal"><div class="modal-content" style="max-width:500px">
+<div id="taskConfigModal" class="modal"><div class="modal-content" style="max-width:520px">
     <div class="modal-header"><span>Quản lý Task 任務管理</span><button class="modal-close" onclick="closeModal('taskConfigModal')">×</button></div>
+    <div style="font-size:10px;color:#888;padding:0 4px 6px;text-align:center"><i class="fas fa-arrows-alt-v"></i> Kéo thả để sắp xếp 拖拽排序 | <i class="fas fa-pen"></i> Bấm tên/icon để sửa 點擊編輯</div>
     <div id="taskConfigList"></div>
     <div class="form-row" style="margin-top:12px">
         <select id="newTaskDept" style="width:90px;padding:4px;font-size:11px"><option value="K">Bếp</option><option value="SV">Phục vụ</option></select>
         <input type="text" id="newTaskName" placeholder="Tên task mới...">
-        <div style="display:flex;gap:4px"><input type="color" id="newTaskColor" value="#546e7a" style="width:40px;padding:2px"><button class="btn btn-sm btn-primary" onclick="addCustomTask()"><i class="fas fa-plus"></i> Thêm</button></div>
+        <div style="display:flex;gap:4px;align-items:center">
+          <div id="newTaskIconPreview" onclick="openIconPicker('new')" style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:#eee;border-radius:6px;cursor:pointer;font-size:14px" title="Chọn icon"><i class="fas fa-circle"></i></div>
+          <input type="color" id="newTaskColor" value="#546e7a" style="width:36px;height:28px;padding:1px;border:1px solid #ccc;border-radius:4px;cursor:pointer">
+          <button class="btn btn-sm btn-primary" onclick="addCustomTask()"><i class="fas fa-plus"></i> Thêm</button>
+        </div>
     </div>
+</div></div>
+<div id="registrationsModal" class="modal"><div class="modal-content" style="max-width:700px;max-height:85vh;overflow-y:auto">
+    <div class="modal-header"><span><i class="fas fa-list-check"></i> Đăng ký ca nhân viên 員工排班登記</span><button class="modal-close" onclick="closeModal('registrationsModal')">×</button></div>
+    <div id="registrationsContent"></div>
+</div></div>
+
+<div id="iconPickerModal" class="modal" style="z-index:10100"><div class="modal-content" style="max-width:360px;max-height:80vh;overflow-y:auto">
+    <div class="modal-header"><span>Chọn Icon 選擇圖標</span><button class="modal-close" onclick="closeModal('iconPickerModal')">×</button></div>
+    <div id="iconPickerGrid" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px"></div>
 </div></div>
 
 
@@ -936,7 +995,7 @@ function pushUndoSnapshot(){
     }catch(e){}
 }
 function undoLast(){
-    if(undoHistory.length===0){showSuccess('Không có gì để hoàn tác');return;}
+    if(undoHistory.length===0){showSuccess('Không có gì để hoàn tác 無可復原項目');return;}
     var snap=undoHistory.pop();
     try{
         localStorage.setItem(LS_KEY,snap);
@@ -952,7 +1011,7 @@ function undoLast(){
             if(tid==='tasks')loadTaskView();
         }
         updateUndoBtn();
-        showSuccess('Đã hoàn tác!');
+        showSuccess('Đã hoàn tác! 已復原');
     }catch(e){console.warn('Undo error:',e);showError('Lỗi hoàn tác!');}
 }
 function updateUndoBtn(){}
@@ -1072,7 +1131,7 @@ function _scheduleCloudSave(jsonStr){
     if(!CLOUD_SYNC_URL)return;
     _cloudDirty=true;
     if(_cloudSaveTimer)clearTimeout(_cloudSaveTimer);
-    _cloudSaveTimer=setTimeout(function(){_doCloudSave(jsonStr);},1500);
+    _cloudSaveTimer=setTimeout(function(){_doCloudSave(jsonStr);},800);
 }
 function _doCloudSave(jsonStr){
     if(!CLOUD_SYNC_URL)return;
@@ -1135,10 +1194,14 @@ window.addEventListener('beforeunload',function(evt){
 });
 // Save immediately when tab becomes hidden (mobile: switching apps, closing tab)
 document.addEventListener('visibilitychange',function(){
-    if(document.hidden&&_cloudSaveTimer&&CLOUD_SYNC_URL){
-        clearTimeout(_cloudSaveTimer);_cloudSaveTimer=null;
-        var jsonStr=JSON.stringify(_buildDataObj());
-        _doCloudSave(jsonStr);
+    if(document.hidden&&CLOUD_SYNC_URL){
+        if(_cloudSaveTimer){
+            clearTimeout(_cloudSaveTimer);_cloudSaveTimer=null;
+        }
+        if(_cloudDirty||_cloudSaveTimer){
+            var jsonStr=JSON.stringify(_buildDataObj());
+            _doCloudSave(jsonStr);
+        }
     }
 });
 function cloudSaveNow(){
@@ -1199,7 +1262,7 @@ function _updateSyncStatus(status,msg){
     if(!el)return;
     var icons={saving:'fa-spinner fa-spin',saved:'fa-cloud',loading:'fa-spinner fa-spin',error:'fa-exclamation-triangle',none:'fa-cloud'};
     var colors={saving:'#f39c12',saved:'#27ae60',loading:'#3498db',error:'#e74c3c',none:'#999'};
-    var texts={saving:'Đang lưu...',saved:'Cloud ✓',loading:'Đang tải...',error:'Lỗi sync',none:'Chưa sync'};
+    var texts={saving:'Đang lưu...',saved:'Cloud ✓ '+(_lastCloudSave?new Date(_lastCloudSave).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}):''),loading:'Đang tải...',error:'Lỗi sync',none:'Chưa sync'};
     el.innerHTML='<i class="fas '+(icons[status]||'fa-cloud')+'" style="color:'+(colors[status]||'#999')+'"></i> <span style="font-size:9px;color:'+(colors[status]||'#999')+'">'+(texts[status]||'')+'</span>';
     el.title=msg||(_lastCloudSave?'Lưu lần cuối: '+_lastCloudSave:'');
 }
@@ -1293,7 +1356,7 @@ function _autoSyncFromCloud(){
                         _lastCloudSave=res.savedAt;
                         _updateSyncStatus('saved');
                         _postInit();
-                        showSuccess('\u0110\u00e3 t\u1ef1 \u0111\u1ed9ng \u0111\u1ed3ng b\u1ed9 t\u1eeb Cloud!');
+                        showSuccess('\u0110\u00e3 t\u1ef1 \u0111\u1ed9ng \u0111\u1ed3ng b\u1ed9 t\u1eeb Cloud! \u5df2\u81ea\u52d5\u540c\u6b65');
                         // Push merged data back to cloud
                         _scheduleCloudSave(mergedJson);
                         _deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');
@@ -1311,7 +1374,9 @@ document.addEventListener('DOMContentLoaded',function(){try{
             if(!cloudOk)_initDefaultData();
             _postInit();
             _autoSyncFromCloud();
-            if(CLOUD_SYNC_URL)setInterval(_autoSyncFromCloud,120000);
+            if(CLOUD_SYNC_URL)setInterval(_autoSyncFromCloud,60000);
+            // Periodic forced cloud save every 30s if dirty
+            if(CLOUD_SYNC_URL)setInterval(function(){if(_cloudDirty&&!_cloudSaving){var j=JSON.stringify(_buildDataObj());_doCloudSave(j);}},30000);
             document.addEventListener('visibilitychange',function(){if(!document.hidden&&CLOUD_SYNC_URL)_autoSyncFromCloud();});
         });
         return; // async path
@@ -2261,10 +2326,91 @@ document.addEventListener('DOMContentLoaded',function(){try{
         var now=new Date(),day=now.getDay(),diff=now.getDate()-day+(day===0?-6:1);
         document.getElementById('scheduleWeek').valueAsDate=new Date(now.getFullYear(),now.getMonth(),diff);
     } // end if(!hasData) — hardcoded schedules chỉ chạy khi chưa có localStorage
-    _postInit();
+        // === Lịch Bếp tháng 5/2026 (import từ Excel) ===
+    (function(){
+    var s=schedules,t=taskAssignments||{},kl=kitchenLabels;
+    function si(k,sv,ev){if(!s[k])s[k]={start:sv,end:ev};}
+    function ti(k,v){if(!t[k])t[k]=v;}
+    function li(k,v){if(!kl[k])kl[k]={l:v};}
+    // May 1
+    si('2026-05-01-BE006','10:00,16:00','13:00,22:00');li('2026-05-01-BE006','A');ti('2026-05-01-BE006','3');
+    si('2026-05-01-BE010','X','X');
+    si('2026-05-01-PTBE032','13:00,17:00','16:00,23:00');li('2026-05-01-PTBE032','C');ti('2026-05-01-PTBE032','2');
+    si('2026-05-01-PTBE025','11:00,17:00','14:00,23:00');li('2026-05-01-PTBE025','B');ti('2026-05-01-PTBE025','1');
+    si('2026-05-01-BE007','14:00','22:00');ti('2026-05-01-BE007','4');
+    // May 2
+    si('2026-05-02-BE006','13:00,17:00','16:00,23:00');li('2026-05-02-BE006','C');ti('2026-05-02-BE006','3');
+    si('2026-05-02-BE010','10:00,16:00','13:00,22:00');li('2026-05-02-BE010','A');ti('2026-05-02-BE010','4');
+    si('2026-05-02-PTBE032','14:00','23:00');ti('2026-05-02-PTBE032','2');
+    si('2026-05-02-PTBE025','11:00,17:00','14:00,23:00');li('2026-05-02-PTBE025','B');ti('2026-05-02-PTBE025','1');
+    si('2026-05-02-BE007','16:00','21:00');ti('2026-05-02-BE007','3');
+    // May 3
+    si('2026-05-03-BE006','13:00,17:00','16:00,23:00');li('2026-05-03-BE006','C');ti('2026-05-03-BE006','3');
+    si('2026-05-03-BE010','10:00,16:00','13:00,22:00');li('2026-05-03-BE010','A');ti('2026-05-03-BE010','4');
+    si('2026-05-03-PTBE032','14:00','23:00');ti('2026-05-03-PTBE032','2');
+    si('2026-05-03-PTBE025','11:00,17:00','14:00,23:00');li('2026-05-03-PTBE025','B');ti('2026-05-03-PTBE025','1');
+    si('2026-05-03-BE007','X','X');
+    // May 4
+    si('2026-05-04-BE006','13:00,17:00','16:00,23:00');li('2026-05-04-BE006','C');ti('2026-05-04-BE006','4');
+    si('2026-05-04-BE010','10:00,16:00','13:00,22:00');li('2026-05-04-BE010','A');ti('2026-05-04-BE010','3');
+    si('2026-05-04-PTBE032','X','X');
+    si('2026-05-04-PTBE025','X','X');
+    // May 5
+    si('2026-05-05-BE006','10:00,16:00','13:00,22:00');li('2026-05-05-BE006','A');ti('2026-05-05-BE006','3');
+    si('2026-05-05-BE010','X','X');
+    si('2026-05-05-PTBE032','13:00,17:00','16:00,23:00');li('2026-05-05-PTBE032','C');ti('2026-05-05-PTBE032','1');
+    si('2026-05-05-PTBE025','X','X');
+    // May 6
+    si('2026-05-06-BE006','13:00,17:00','16:00,23:00');li('2026-05-06-BE006','C');ti('2026-05-06-BE006','1');
+    si('2026-05-06-BE010','10:00,16:00','13:00,22:00');li('2026-05-06-BE010','A');ti('2026-05-06-BE010','3');
+    si('2026-05-06-PTBE032','X','X');
+    si('2026-05-06-PTBE025','X','X');
+    // May 7
+    si('2026-05-07-BE006','X','X');
+    si('2026-05-07-BE010','X','X');
+    si('2026-05-07-PTBE032','13:00,17:00','16:00,23:00');li('2026-05-07-PTBE032','C');
+    // May 8
+    si('2026-05-08-BE006','13:00,17:00','16:00,23:00');li('2026-05-08-BE006','C');ti('2026-05-08-BE006','3');
+    si('2026-05-08-BE010','10:00,16:00','13:00,22:00');li('2026-05-08-BE010','A');
+    si('2026-05-08-PTBE032','18:00','23:00');ti('2026-05-08-PTBE032','2');
+    // May 9
+    si('2026-05-09-BE006','13:00,17:00','16:00,23:00');li('2026-05-09-BE006','C');ti('2026-05-09-BE006','3');
+    si('2026-05-09-BE010','10:00,16:00','13:00,22:00');li('2026-05-09-BE010','A');ti('2026-05-09-BE010','4');
+    si('2026-05-09-PTBE032','14:00','23:00');
+    // May 10
+    si('2026-05-10-BE006','13:00,17:00','16:00,23:00');li('2026-05-10-BE006','C');ti('2026-05-10-BE006','3');
+    si('2026-05-10-BE010','10:00,16:00','13:00,22:00');li('2026-05-10-BE010','A');ti('2026-05-10-BE010','4');
+    si('2026-05-10-PTBE032','11:00,17:00','14:00,23:00');li('2026-05-10-PTBE032','B');ti('2026-05-10-PTBE032','2');
+    si('2026-05-10-BE007','14:00','21:00');ti('2026-05-10-BE007','1');
+    // May 11
+    si('2026-05-11-BE006','13:00,17:00','16:00,23:00');li('2026-05-11-BE006','C');ti('2026-05-11-BE006','1');
+    si('2026-05-11-BE010','10:00,16:00','13:00,22:00');li('2026-05-11-BE010','A');ti('2026-05-11-BE010','3');
+    si('2026-05-11-PTBE032','X','X');
+    // May 12
+    si('2026-05-12-BE006','10:00,16:00','13:00,22:00');li('2026-05-12-BE006','A');ti('2026-05-12-BE006','3');
+    si('2026-05-12-BE010','X','X');
+    si('2026-05-12-PTBE032','13:00,17:00','16:00,23:00');li('2026-05-12-PTBE032','C');ti('2026-05-12-PTBE032','1');
+    // May 13
+    si('2026-05-13-BE006','X','X');
+    si('2026-05-13-BE010','10:00,16:00','13:00,22:00');li('2026-05-13-BE010','A');ti('2026-05-13-BE010','3');
+    si('2026-05-13-PTBE032','13:00,17:00','16:00,23:00');li('2026-05-13-PTBE032','C');ti('2026-05-13-PTBE032','1');
+    // May 14
+    si('2026-05-14-BE006','13:00,17:00','16:00,23:00');li('2026-05-14-BE006','C');ti('2026-05-14-BE006','1');
+    si('2026-05-14-BE010','10:00,16:00','13:00,22:00');li('2026-05-14-BE010','A');ti('2026-05-14-BE010','3');
+    si('2026-05-14-PTBE032','X','X');
+    // May 15
+    si('2026-05-15-BE006','13:00,17:00','16:00,23:00');li('2026-05-15-BE006','C');ti('2026-05-15-BE006','3');
+    si('2026-05-15-BE010','10:00,16:00','13:00,22:00');li('2026-05-15-BE010','A');
+    si('2026-05-15-PTBE032','18:00','23:00');ti('2026-05-15-PTBE032','1');
+    // Ensure PTBE025 is in cross-dept kitchen set
+    if(!crossDeptSchedule.kitchen.has('PTBE025'))crossDeptSchedule.kitchen.add('PTBE025');
+    })();
+_postInit();
     _autoSyncFromCloud();
-    // Auto-sync every 2 minutes
-    if(CLOUD_SYNC_URL)setInterval(_autoSyncFromCloud,120000);
+    // Auto-sync every 60s
+    if(CLOUD_SYNC_URL)setInterval(_autoSyncFromCloud,60000);
+    // Periodic forced cloud save every 30s if dirty
+    if(CLOUD_SYNC_URL)setInterval(function(){if(_cloudDirty&&!_cloudSaving){var j=JSON.stringify(_buildDataObj());_doCloudSave(j);}},30000);
     // visibilitychange for auto-sync already registered in _loadFromCloud path
 }catch(initErr){console.error('INIT ERROR:',initErr);document.title='INIT ERROR: '+initErr.message;var errBanner=document.createElement('div');errBanner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99999;background:#c62828;color:white;padding:12px;font-size:14px;font-weight:700;text-align:center';errBanner.textContent='INIT ERROR: '+initErr.message+' (line '+initErr.stack+')';document.body.appendChild(errBanner);}});
 
@@ -2286,11 +2432,11 @@ function filterEmployees(){var search=(document.getElementById('employeeSearch')
 function toggleSelect(id,cb){if(cb.checked)selectedIds.add(id);else selectedIds.delete(id);updateBatchBar();renderEmployees();}
 function toggleSelectAll(){var all=document.getElementById('selectAll').checked;document.querySelectorAll('#employeeList .row-checkbox').forEach(function(cb){var id=cb.closest('tr').querySelector('td:nth-child(2) strong').textContent;if(all)selectedIds.add(id);else selectedIds.delete(id);});updateBatchBar();renderEmployees();}
 function updateBatchBar(){var bar=document.getElementById('batchBar');document.getElementById('selectedCount').textContent=selectedIds.size;bar.classList.toggle('show',selectedIds.size>0);}
-function batchDelete(){if(!selectedIds.size||!confirm('Xóa '+selectedIds.size+' NV?'))return;employees=employees.filter(function(e){return !selectedIds.has(e.id);});selectedIds.clear();updateBatchBar();renderEmployees();updateStats();showSuccess('Đã xóa!');autoSyncEmployees();}
+function batchDelete(){if(!selectedIds.size||!confirm('Xóa '+selectedIds.size+' NV? 刪除員工？'))return;employees=employees.filter(function(e){return !selectedIds.has(e.id);});selectedIds.clear();updateBatchBar();renderEmployees();updateStats();showSuccess('Đã xóa! 已刪除');autoSyncEmployees();}
 function batchDeselect(){selectedIds.clear();document.getElementById('selectAll').checked=false;updateBatchBar();renderEmployees();}
-function batchChangeStatus(v){if(!v||!selectedIds.size)return;var d=todayStr();var c=0;employees.forEach(function(e){if(selectedIds.has(e.id)){if(v==='resigned'&&!e.endDate){e.endDate=d;(e.changelog||[]).push(d+': Thôi việc');c++;}else if(v==='active'&&e.endDate){e.endDate='';(e.changelog||[]).push(d+': Trở lại');c++;}}});if(c){renderEmployees();updateStats();showSuccess(c+' NV!');autoSyncEmployees();}document.getElementById('batchStatus').value='';}
-function batchChangeType(v){if(!v||!selectedIds.size)return;var d=todayStr();var c=0;employees.forEach(function(e){if(selectedIds.has(e.id)&&e.type!==v){(e.changelog||[]).push(d+': '+e.type+'→'+v);e.type=v;c++;}});if(c){renderEmployees();updateStats();showSuccess(c+' NV!');}document.getElementById('batchType').value='';}
-function batchChangeDept(v){if(!v||!selectedIds.size)return;var d=todayStr();var c=0;employees.forEach(function(e){if(selectedIds.has(e.id)&&e.dept!==v){(e.changelog||[]).push(d+': BP→'+v);e.dept=v;c++;}});if(c){renderEmployees();updateStats();showSuccess(c+' NV!');}document.getElementById('batchDept').value='';}
+function batchChangeStatus(v){if(!v||!selectedIds.size)return;var d=todayStr();var c=0;employees.forEach(function(e){if(selectedIds.has(e.id)){if(v==='resigned'&&!e.endDate){e.endDate=d;(e.changelog||[]).push(d+': Thôi việc');c++;}else if(v==='active'&&e.endDate){e.endDate='';(e.changelog||[]).push(d+': Trở lại');c++;}}});if(c){renderEmployees();updateStats();showSuccess(c+' NV 員工!');autoSyncEmployees();}document.getElementById('batchStatus').value='';}
+function batchChangeType(v){if(!v||!selectedIds.size)return;var d=todayStr();var c=0;employees.forEach(function(e){if(selectedIds.has(e.id)&&e.type!==v){(e.changelog||[]).push(d+': '+e.type+'→'+v);e.type=v;c++;}});if(c){renderEmployees();updateStats();showSuccess(c+' NV 員工!');}document.getElementById('batchType').value='';}
+function batchChangeDept(v){if(!v||!selectedIds.size)return;var d=todayStr();var c=0;employees.forEach(function(e){if(selectedIds.has(e.id)&&e.dept!==v){(e.changelog||[]).push(d+': BP→'+v);e.dept=v;c++;}});if(c){renderEmployees();updateStats();showSuccess(c+' NV 員工!');}document.getElementById('batchDept').value='';}
 
 function batchChangeStartDate(v){
     if(!v||!selectedIds.size)return;
@@ -2305,7 +2451,7 @@ function batchChangeStartDate(v){
             c++;
         }
     });
-    if(c){saveData();renderEmployees();updateStats();showSuccess('Đã cập nhật ngày vào làm cho '+c+' NV!');}
+    if(c){saveData();renderEmployees();updateStats();showSuccess('Đã cập nhật 已更新 '+c+' NV 員工!');}
     document.getElementById('batchStartDate').value='';
 }
 function batchChangeEndDate(v){
@@ -2320,7 +2466,7 @@ function batchChangeEndDate(v){
             c++;
         }
     });
-    if(c){saveData();renderEmployees();updateStats();showSuccess('Đã cập nhật ngày thôi việc cho '+c+' NV!');}
+    if(c){saveData();renderEmployees();updateStats();showSuccess('Đã cập nhật 已更新 '+c+' NV 員工!');}
     document.getElementById('batchEndDate').value='';
 }function updateStats(){document.getElementById('totalEmployees').textContent=employees.length;document.getElementById('activeEmployees').textContent=employees.filter(function(e){return !e.endDate;}).length;document.getElementById('fullTimeCount').textContent=employees.filter(function(e){return e.type==='Fulltime'&&!e.endDate;}).length;document.getElementById('partTimeCount').textContent=employees.filter(function(e){return e.type==='Partime'&&!e.endDate;}).length;}
 
@@ -2340,7 +2486,7 @@ h.forEach(function(x){
     else{var t=(x.baseSalary||0)+(x.responsibility||0)+(x.attendance||0);b.innerHTML+='<tr><td>'+x.date+'</td><td class="amount">'+formatCurrency(x.baseSalary)+'</td><td class="amount">'+formatCurrency(x.responsibility)+'</td><td class="amount">'+formatCurrency(x.attendance)+'</td><td class="amount">'+formatCurrency(t)+'</td><td>'+(x.note||'')+'</td></tr>';}
 });}
 function renderChangelog(log){var b=document.getElementById('changelogBody');b.innerHTML='';if(!log||!log.length){b.innerHTML='<div style="color:#999;text-align:center;padding:8px">—</div>';return;}log.slice().reverse().forEach(function(l){var p=l.indexOf(':');b.innerHTML+='<div class="changelog-item"><span class="changelog-date">'+(p>0?l.substring(0,p).trim():'')+'</span><span class="changelog-text">'+(p>0?l.substring(p+1).trim():l)+'</span></div>';});}
-function addChangeNote(){var note=prompt('Ghi chú:');if(!note||!editingEmpId)return;var emp=employees.find(function(e){return e.id===editingEmpId;});if(!emp)return;(emp.changelog=emp.changelog||[]).push(todayStr()+': '+note);renderChangelog(emp.changelog);showSuccess('OK!');}
+function addChangeNote(){var note=prompt('Ghi chú 備註:');if(!note||!editingEmpId)return;var emp=employees.find(function(e){return e.id===editingEmpId;});if(!emp)return;(emp.changelog=emp.changelog||[]).push(todayStr()+': '+note);renderChangelog(emp.changelog);showSuccess('OK! 完成');}
 function saveEmployee(event){event.preventDefault();
 var qrImg=document.getElementById('qrPreview').querySelector('img');
 var _parseMoney=function(id){return(parseInt(String(document.getElementById(id).value).replace(/\./g,'').replace(/[^0-9]/g,''))||0);};
@@ -2386,10 +2532,10 @@ if(editingEmpId){
     emp.changelog=[todayStr()+': Nhận việc'];
     if(type==='Fulltime'&&emp.baseSalary>0)emp.salaryHistory=[{date:emp.startDate||todayStr(),baseSalary:emp.baseSalary,responsibility:emp.responsibility,attendance:emp.attendance,note:'Ban đầu'}];
     employees.push(emp);
-}renderEmployees();updateStats();closeModal('employeeModal');showSuccess('Lưu!');editingEmpId=null;autoSyncEmployees();}
+}saveData();renderEmployees();updateStats();closeModal('employeeModal');showSuccess('Đã lưu! 已儲存');editingEmpId=null;autoSyncEmployees();}
 function autoSyncEmployees(){if(!empPortalConfig.apiUrl)return;var emps=employees.map(function(e){return{id:e.id,name:e.name,nameCN:e.nameCN||'',dept:e.dept||'',type:e.type||''};});var params={action:'syncEmployees',bossPassword:empPortalConfig.bossPassword,employees:JSON.stringify(emps)};portalApiCall(params,function(res){if(res.success){console.log('Auto-sync OK:',res.count,'NV');}else{console.warn('Auto-sync failed:',res.error);}});}
 function openRaiseModal(){if(!editingEmpId)return;var e=employees.find(function(x){return x.id===editingEmpId;});if(!e)return;document.getElementById('raiseBase').value=e.baseSalary;document.getElementById('raiseResp').value=e.responsibility;document.getElementById('raiseAtt').value=e.attendance;document.getElementById('raiseDate').value='';document.getElementById('raiseNote').value='';document.getElementById('raiseModal').classList.add('active');}
-function saveRaise(event){event.preventDefault();if(!editingEmpId)return;var e=employees.find(function(x){return x.id===editingEmpId;});if(!e)return;var entry={date:document.getElementById('raiseDate').value,baseSalary:parseInt(document.getElementById('raiseBase').value)||0,responsibility:parseInt(document.getElementById('raiseResp').value)||0,attendance:parseInt(document.getElementById('raiseAtt').value)||0,note:document.getElementById('raiseNote').value};(e.salaryHistory=e.salaryHistory||[]).push(entry);e.baseSalary=entry.baseSalary;e.responsibility=entry.responsibility;e.attendance=entry.attendance;(e.changelog=e.changelog||[]).push(entry.date+': Tăng lương');document.getElementById('empBaseSalary').value=entry.baseSalary;document.getElementById('empResponsibility').value=entry.responsibility;document.getElementById('empAttendance').value=entry.attendance;calcOfficialTotal();renderSalaryHistory(e.salaryHistory);renderChangelog(e.changelog);closeModal('raiseModal');showSuccess('OK!');}
+function saveRaise(event){event.preventDefault();if(!editingEmpId)return;var e=employees.find(function(x){return x.id===editingEmpId;});if(!e)return;var entry={date:document.getElementById('raiseDate').value,baseSalary:parseInt(document.getElementById('raiseBase').value)||0,responsibility:parseInt(document.getElementById('raiseResp').value)||0,attendance:parseInt(document.getElementById('raiseAtt').value)||0,note:document.getElementById('raiseNote').value};(e.salaryHistory=e.salaryHistory||[]).push(entry);e.baseSalary=entry.baseSalary;e.responsibility=entry.responsibility;e.attendance=entry.attendance;(e.changelog=e.changelog||[]).push(entry.date+': Tăng lương');document.getElementById('empBaseSalary').value=entry.baseSalary;document.getElementById('empResponsibility').value=entry.responsibility;document.getElementById('empAttendance').value=entry.attendance;calcOfficialTotal();renderSalaryHistory(e.salaryHistory);renderChangelog(e.changelog);closeModal('raiseModal');saveData();showSuccess('OK! 完成');}
 function setWageType(wt){
     document.querySelectorAll('.wage-type-btn').forEach(function(b){b.classList.remove('active');});
     var btns=document.querySelectorAll('.wage-type-btn');
@@ -2693,11 +2839,20 @@ function applyChange(){
     renderChangelog(emp.changelog);updateTransferInfo(emp);
     document.getElementById('transferType').value='';document.getElementById('transferDept').value='';document.getElementById('transferPosition').value='';
     document.getElementById('transferWage').value='';document.getElementById('transferDate').value='';document.getElementById('transferNote').value='';
-    saveData();filterEmployees();showSuccess('Đã áp dụng thay đổi!');
+    saveData();filterEmployees();showSuccess('Đã áp dụng thay đổi! 已套用變更');
 }
 // ===== SCHEDULE =====
 function getWeekDates(d){var dt=new Date(d),day=dt.getDay(),diff=dt.getDate()-day+(day===0?-6:1),w=[];for(var i=0;i<7;i++)w.push(new Date(dt.getFullYear(),dt.getMonth(),diff+i));return w;}
 
+function renderTaskLegend(){
+    var items=document.getElementById('taskLegendItems');if(!items)return;
+    var tasks=schedDeptView==='kitchen'?TASK_LIST_K:TASK_LIST_SV;
+    var h='';
+    tasks.forEach(function(t){
+        h+='<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:'+t.color+'20;color:'+t.color+';border:1px solid '+t.color+'"><i class="fas '+t.icon+'" style="font-size:9px"></i> '+t.name+'</span>';
+    });
+    items.innerHTML=h;
+}
 function renderQuickBars(){
     var h='';
     if(schedDeptView==='kitchen'){
@@ -2710,7 +2865,7 @@ function renderQuickBars(){
         var timeDetail=sh.s.indexOf(',')>=0?(sh.s.split(',').map(function(s,j){return fmt(s)+'-'+fmt(sh.e.split(',')[j]);}).join(' + ')):(fmt(sh.s)+'-'+fmt(sh.e));
         var labelText=sh.l;
         if(sh.l==='A'||sh.l==='B'||sh.l==='C')labelText=sh.l+' <span style="font-size:8px;opacity:.7">('+timeDetail+')</span>';
-        h+='<span class="qb-item'+(isActive?' active':'')+'" onclick="toggleShiftBrush(\'K\','+i+')" title="'+timeDetail+' ('+hrs+'h)" draggable="true" ondragstart="onPinDragStart(event,\'K\','+i+')" ondragover="event.preventDefault()" ondrop="onPinDrop(event,\'K\','+i+')">'+labelText;
+        h+='<span class="qb-item'+(isActive?' active':'')+'" onclick="toggleShiftBrush(\'K\','+i+')" ondblclick="activateBrushMode(\'K\','+i+')" title="'+timeDetail+' ('+hrs+'h)" draggable="true" ondragstart="onPinDragStart(event,\'K\','+i+')" ondragover="event.preventDefault()" ondrop="onPinDrop(event,\'K\','+i+')">'+labelText;
         if(shColor)h+='<span style="display:inline-block;width:8px;height:8px;background:'+shColor+';border-radius:50%;margin-left:2px;cursor:pointer" onclick="event.stopPropagation();openColorPicker(\'K\','+i+')" title="Click để đổi màu">●</span>';
         else h+='<span style="display:inline-block;width:8px;height:8px;background:transparent;border:1px solid #ccc;border-radius:50%;margin-left:2px;cursor:pointer" onclick="event.stopPropagation();openColorPicker(\'K\','+i+')" title="Click để thêm màu">○</span>';
         h+='<span class="qb-copy" onclick="event.stopPropagation();copyPin(\'K\','+i+')" title="Sao chép">⧉</span>';
@@ -2732,7 +2887,7 @@ function renderQuickBars(){
         var isActive=activeShiftBrush&&activeShiftBrush!=='off'&&activeShiftBrush!=='clear'&&activeShiftBrush.s===sh.s&&activeShiftBrush.e===sh.e&&activeShiftBrush.dept==='SV';
         var hrs=shiftHours(sh.s,sh.e);
         var colorKey=sh.s+'-'+sh.e;var shColor=shiftColors[colorKey];
-        h+='<span class="qb-item'+(isActive?' active':'')+'" onclick="toggleShiftBrush(\'SV\','+i+')" title="'+sh.s+'-'+sh.e+' ('+hrs+'h)" draggable="true" ondragstart="onPinDragStart(event,\'SV\','+i+')" ondragover="event.preventDefault()" ondrop="onPinDrop(event,\'SV\','+i+')">'+sh.l;
+        h+='<span class="qb-item'+(isActive?' active':'')+'" onclick="toggleShiftBrush(\'SV\','+i+')" ondblclick="activateBrushMode(\'SV\','+i+')" title="'+sh.s+'-'+sh.e+' ('+hrs+'h)" draggable="true" ondragstart="onPinDragStart(event,\'SV\','+i+')" ondragover="event.preventDefault()" ondrop="onPinDrop(event,\'SV\','+i+')">'+sh.l;
         if(shColor)h+='<span style="display:inline-block;width:8px;height:8px;background:'+shColor+';border-radius:50%;margin-left:2px;cursor:pointer" onclick="event.stopPropagation();openColorPicker(\'SV\','+i+')" title="Click để đổi màu">●</span>';
         else h+='<span style="display:inline-block;width:8px;height:8px;background:transparent;border:1px solid #ccc;border-radius:50%;margin-left:2px;cursor:pointer" onclick="event.stopPropagation();openColorPicker(\'SV\','+i+')" title="Click để thêm màu">○</span>';
         h+='<span class="qb-copy" onclick="event.stopPropagation();copyPin(\'SV\','+i+')" title="Sao chép">⧉</span>';
@@ -2758,7 +2913,7 @@ function onPinDrop(e,type,idx){
     var item=arr.splice(dragPinIdx,1)[0];
     arr.splice(idx,0,item);
     activeShiftBrush=null;
-    renderQuickBars();saveData();showSuccess('Đã di chuyển!');
+    renderQuickBars();saveData();showSuccess('Đã di chuyển! 已移動');
 }
 // Deleted pins undo stack
 var deletedPins=[];
@@ -2768,7 +2923,7 @@ function copyPin(type,idx){
     var src=arr[idx];
     var clone={l:src.l,s:src.s,e:src.e};
     arr.splice(idx+1,0,clone);
-    renderQuickBars();saveData();showSuccess('Đã sao chép: '+src.l);
+    renderQuickBars();saveData();showSuccess('Đã sao chép 已複製: '+src.l);
 }
 
 // ===== CELL SELECTION + KEYBOARD SHORTCUTS (multi-cell) =====
@@ -2792,10 +2947,10 @@ function schedPushUndo(desc){
     if(schedUndoStack.length>20)schedUndoStack.shift();
 }
 function schedUndo(){
-    if(!schedUndoStack.length){showSuccess('Không có gì để hoàn tác');return;}
+    if(!schedUndoStack.length){showSuccess('Không có gì để hoàn tác 無可復原項目');return;}
     var snap=schedUndoStack.pop();
     schedules=snap.schedules;kitchenLabels=snap.kitchenLabels;scheduleDepts=snap.scheduleDepts;
-    saveData();reloadSchedule();showSuccess('Đã hoàn tác: '+snap.desc);
+    saveData();reloadSchedule();showSuccess('Đã hoàn tác 已復原: '+snap.desc);
 }
 
 function selectCell(key,dept,empId,dateStr){
@@ -2883,9 +3038,9 @@ document.addEventListener('keydown',function(e){
     if(e.key==='Delete'||e.key==='Backspace'){
         e.preventDefault();
         schedPushUndo('Xóa '+keys.length+' ô');
-        keys.forEach(function(k){delete schedules[k];if(!_deletedKeys.schedules)_deletedKeys.schedules={};_deletedKeys.schedules[k]=1;delete kitchenLabels[k];delete scheduleDepts[k];});
+        keys.forEach(function(k){delete schedules[k];if(!_deletedKeys.schedules)_deletedKeys.schedules={};_deletedKeys.schedules[k]=1;delete kitchenLabels[k];delete scheduleDepts[k];delete taskAssignments[k];});
         schedSelectedCells={};
-        reloadSchedule();saveData();showSuccess('Đã xóa '+keys.length+' ô');
+        reloadSchedule();saveData();showSuccess('Đã xóa '+keys.length+' ô 已刪除');
         return;
     }
     // CTRL+C
@@ -2916,13 +3071,13 @@ document.addEventListener('keydown',function(e){
             });
         });
         schedCopiedCells=cellInfos;
-        showSuccess('Đã copy '+keys.length+' ô');
+        showSuccess('Đã copy 已複製 '+keys.length+' ô');
         return;
     }
     // CTRL+V
     if((e.ctrlKey||e.metaKey)&&e.key==='v'){
         e.preventDefault();
-        if(!schedCopiedCells||!schedCopiedCells.length){showSuccess('Chưa copy gì!');return;}
+        if(!schedCopiedCells||!schedCopiedCells.length){showSuccess('Chưa copy gì! 尚未複製');return;}
         // Use first selected cell as anchor
         var anchorEl=document.querySelector('[data-cellkey="'+keys[0]+'"]');
         if(!anchorEl)return;
@@ -2941,7 +3096,7 @@ document.addEventListener('keydown',function(e){
             count++;
         });
         schedSelectedCells={};
-        reloadSchedule();saveData();showSuccess('Đã paste '+count+' ô');
+        reloadSchedule();saveData();showSuccess('Đã paste 已貼上 '+count+' ô');
         return;
     }
     // X → nghỉ (all selected)
@@ -2949,7 +3104,7 @@ document.addEventListener('keydown',function(e){
         e.preventDefault();
         schedPushUndo('Đặt nghỉ '+keys.length+' ô');
         keys.forEach(function(k){schedules[k]={start:'',end:''};kitchenLabels[k]={l:'X'};});
-        reloadSchedule();saveData();showSuccess('Nghỉ → '+keys.length+' ô');
+        reloadSchedule();saveData();showSuccess('Nghỉ 休 → '+keys.length+' ô');
         return;
     }
     // A/B/C → gán label (all selected that have shifts)
@@ -3012,6 +3167,22 @@ function navigateCell(direction){
 function toggleShiftBrush(type,idx){
     var arr=type==='K'?pinnedShiftsK:pinnedShiftsSV;
     var sh=arr[idx];
+    // Single click: apply to selected cells only (no brush mode)
+    var keys=Object.keys(schedSelectedCells);
+    if(keys.length>0&&!activeShiftBrush){
+        schedPushUndo('Gán '+sh.l+' cho '+keys.length+' ô');
+        keys.forEach(function(k){
+            schedules[k]={start:sh.s,end:sh.e};
+            var lbl=sh.l||'';
+            if(lbl==='A'||lbl==='B'||lbl==='C'){kitchenLabels[k]={l:lbl};}
+            else if(lbl==='X'){kitchenLabels[k]={l:'X'};}
+            else{delete kitchenLabels[k];}
+            scheduleDepts[k]=type==='K'?'Bếp':'Phục vụ';
+        });
+        reloadSchedule();saveData();showSuccess(sh.l+' → '+keys.length+' ô');
+        return;
+    }
+    // Toggle brush mode (also activated by double click)
     if(activeShiftBrush&&activeShiftBrush!=='off'&&activeShiftBrush!=='clear'&&activeShiftBrush.s===sh.s&&activeShiftBrush.e===sh.e&&activeShiftBrush.dept===type){
         activeShiftBrush=null;
     }else{
@@ -3020,7 +3191,28 @@ function toggleShiftBrush(type,idx){
     renderQuickBars();
 }
 function toggleSpecialBrush(type){
+    // Single click: apply to selected cells
+    var keys=Object.keys(schedSelectedCells);
+    if(keys.length>0&&!activeShiftBrush){
+        if(type==='off'){
+            schedPushUndo('Đặt nghỉ '+keys.length+' ô');
+            keys.forEach(function(k){schedules[k]={start:'',end:''};kitchenLabels[k]={l:'X'};});
+            reloadSchedule();saveData();showSuccess('Nghỉ 休 → '+keys.length+' ô');
+        }else if(type==='clear'){
+            schedPushUndo('Xóa '+keys.length+' ô');
+            keys.forEach(function(k){delete schedules[k];if(!_deletedKeys.schedules)_deletedKeys.schedules={};_deletedKeys.schedules[k]=1;delete kitchenLabels[k];delete scheduleDepts[k];delete taskAssignments[k];});
+            reloadSchedule();saveData();showSuccess('Xóa → '+keys.length+' ô 已刪除');
+        }
+        return;
+    }
+    // Toggle brush mode
     activeShiftBrush=activeShiftBrush===type?null:type;
+    renderQuickBars();
+}
+function activateBrushMode(type,idx){
+    var arr=type==='K'?pinnedShiftsK:pinnedShiftsSV;
+    var sh=arr[idx];
+    activeShiftBrush={s:sh.s,e:sh.e,l:sh.l,dept:type};
     renderQuickBars();
 }
 function removePin(type,idx){
@@ -3029,14 +3221,14 @@ function removePin(type,idx){
     if(removed)deletedPins.push({type:type,item:removed});
     if(deletedPins.length>10)deletedPins.shift();
     activeShiftBrush=null;
-    renderQuickBars();saveData();showSuccess('Đã bỏ ghim (bấm Hoàn để phục hồi)');
+    renderQuickBars();saveData();showSuccess('Đã bỏ ghim 已取消釘選 (bấm Hoàn để phục hồi)');
 }
 function restoreLastPin(){
     if(!deletedPins.length)return;
     var last=deletedPins.pop();
     var arr=last.type==='K'?pinnedShiftsK:pinnedShiftsSV;
     arr.push(last.item);
-    renderQuickBars();saveData();showSuccess('Đã phục hồi: '+last.item.l);
+    renderQuickBars();saveData();showSuccess('Đã phục hồi 已恢復: '+last.item.l);
 }
 function openColorPicker(type,idx){
     var arr=type==='K'?pinnedShiftsK:pinnedShiftsSV;
@@ -3049,7 +3241,22 @@ function openColorPicker(type,idx){
     input.value=currentColor;
     input.onchange=function(){
         shiftColors[colorKey]=this.value;
-        renderQuickBars();saveData();showSuccess('Đã cập nhật màu');
+        reloadSchedule();renderQuickBars();saveData();showSuccess('Đã cập nhật màu 已更新顏色');
+    };
+    input.click();
+}
+function spPickColor(){
+    if(!currentShiftKey)return;
+    var sh=schedules[currentShiftKey];
+    if(!sh||!sh.start||!sh.end){showSuccess('Chưa có ca để đổi màu 尚無班次可變色');return;}
+    var colorKey=sh.start+'-'+sh.end;
+    var currentColor=shiftColors[colorKey]||'#90caf9';
+    var input=document.createElement('input');
+    input.type='color';
+    input.value=currentColor;
+    input.onchange=function(){
+        shiftColors[colorKey]=this.value;
+        hideShiftPicker();saveData();reloadSchedule();renderQuickBars();showSuccess('Đã cập nhật màu 已更新顏色');
     };
     input.click();
 }
@@ -3060,11 +3267,12 @@ function pinCustomShift(){
     // Add to both
     pinnedShiftsK.push({l:label,s:s,e:e});
     pinnedShiftsSV.push({l:label,s:s,e:e});
-    hideShiftPicker();renderQuickBars();showSuccess('Đã ghim: '+label);
+    hideShiftPicker();renderQuickBars();showSuccess('Đã ghim 已釘選: '+label);
 }
 
 function loadScheduleWeek(){
     var di=document.getElementById('scheduleWeek').value;if(!di)return;
+    try{
     var d=new Date(di),w=getWeekDates(d);
     var dn=['T2','T3','T4','T5','T6','T7','CN'];
     var weekStart=w[0];var weekEnd=w[w.length-1];
@@ -3089,7 +3297,10 @@ function loadScheduleWeek(){
     }
     document.getElementById('scheduleContent').innerHTML=h;
     renderQuickBars();
+    renderTaskLegend();
+    renderTaskLegend();
     hideShiftPicker();
+    }catch(err){console.error('loadScheduleWeek error:',err);document.getElementById('scheduleContent').innerHTML='<div style="color:red;padding:20px;text-align:center"><i class="fas fa-exclamation-triangle"></i> Lỗi render tuần: '+err.message+'</div>';}
 }
 function buildSched(title,cls,emps,w,dn,dept){
     var h='<div class="schedule-dept"><div class="schedule-dept-header '+cls+'"><i class="fas fa-'+(cls==='kitchen'?'fire':cls==='support'?'hands-helping':'concierge-bell')+'"></i> '+title+' ('+emps.length+')</div><div class="schedule-grid">';
@@ -3113,7 +3324,7 @@ function buildSched(title,cls,emps,w,dn,dept){
               var colorKey=sh.start+'-'+sh.end;var customColor=shiftColors[colorKey];if(customColor){cellStyle='background:'+customColor+' !important';}else{if(hrs<=5)cc+=' shift-short';else if(hrs<=7)cc+=' shift-mid';else if(hrs<=9)cc+=' shift-long';else if(hrs<=11)cc+=' shift-ot';else cc+=' shift-super';}}else{cc+=' off';ct='';}}
             if(activeShiftBrush)cc+=' brush-active';
             // Task tags (existing assignments)
-            var ta=taskAssignments[k]||[];
+            var ta=taskAssignments[k];ta=Array.isArray(ta)?ta:[];
             var tags='';
             if(ta.length){tags='<div class="task-tags">';ta.forEach(function(tid){var t=getAllTasks().find(function(x){return x.id===tid;});if(t)tags+='<span class="task-tag" style="background:'+t.color+'" title="'+t.name+'"><i class="fas '+(t.icon||'fa-circle')+'"></i></span>';});tags+='</div>';}
             // For kitchen cells, show A/B/C label if available
@@ -3182,7 +3393,7 @@ function buildKitchenWeek(emps,w,dn){
                 }
             }else{cellH='<span style="color:#ddd">-</span>';}
             // Task tags
-            var ta=taskAssignments[key]||[];
+            var ta=taskAssignments[key];ta=Array.isArray(ta)?ta:[];
             if(ta.length){cellH+='<div style="display:flex;gap:1px;justify-content:center;margin-top:1px">';ta.forEach(function(tid){var t=getAllTasks().find(function(x){return x.id===tid;});if(t)cellH+='<span style="width:6px;height:6px;border-radius:50%;background:'+t.color+';display:inline-block" title="'+t.name+'"></span>';});cellH+='</div>';}
             h+='<td data-cellkey="'+key+'" data-celldept="Bếp" data-cellempid="'+emp.id+'" data-celldate="'+ds+'" data-empidx="'+emps.indexOf(emp)+'" data-dayidx="'+i+'" data-empcnt="'+emps.length+'" data-daycnt="7" data-layout="vertical" style="padding:4px 3px;text-align:center;border-right:1px solid #f0f0f0;background:'+cellBg+';cursor:pointer" onclick="onCellClick(event,\''+key+'\',\'Bếp\',\''+emp.id+'\',\''+ds+'\')">'+cellH+'</td>';
         });
@@ -3282,6 +3493,13 @@ function openShiftPickerForCell(ev,empId,dateStr,dept){
     }else{segDiv.innerHTML='';segDiv.style.display='none';}
     // Show extra actions (Nghỉ/Xóa) when editing existing cell
     document.getElementById('spExtraActions').style.display=currentShiftKey?'flex':'none';
+    // Update color button indicator
+    var _spCB=document.getElementById('spColorBtn');
+    if(_spCB&&existing&&existing.start&&existing.end){
+        var _ck2=existing.start+'-'+existing.end;var _sc2=shiftColors[_ck2];
+        if(_sc2){_spCB.innerHTML='<i class="fas fa-palette" style="color:'+_sc2+'"></i> <span style="display:inline-block;width:12px;height:12px;background:'+_sc2+';border-radius:50%;border:1px solid #999;vertical-align:middle"></span>';_spCB.title='Đổi màu: '+_sc2;}
+        else{_spCB.innerHTML='<i class="fas fa-palette"></i> Màu';_spCB.title='Thêm màu cho khung giờ này';}
+    }
     // Show task section when cell has a shift
     var taskSec=document.getElementById('spTaskSection');
     if(existing&&existing.start){
@@ -3302,13 +3520,13 @@ function openShiftPickerForCell(ev,empId,dateStr,dept){
 function spSetOff(){
     if(!currentShiftKey)return;
     schedules[currentShiftKey]={start:'',end:''};if(currentShiftDept)scheduleDepts[currentShiftKey]=currentShiftDept;
-    hideShiftPicker();reloadSchedule();showSuccess('Đã đặt nghỉ');
+    hideShiftPicker();saveData();reloadSchedule();showSuccess('Đã đặt nghỉ 已設為休假');
 }
 function spClearShift(){
     if(!currentShiftKey)return;
     delete schedules[currentShiftKey];if(!_deletedKeys.schedules)_deletedKeys.schedules={};_deletedKeys.schedules[currentShiftKey]=1;
     delete taskAssignments[currentShiftKey];delete scheduleDepts[currentShiftKey];
-    hideShiftPicker();saveData();reloadSchedule();showSuccess('Đã xóa ca');
+    hideShiftPicker();saveData();reloadSchedule();showSuccess('Đã xóa ca 已刪除班次');
 }
 function removeShiftSegment(idx){
     if(!currentShiftKey)return;
@@ -3318,27 +3536,29 @@ function removeShiftSegment(idx){
     else{ss.splice(idx,1);es.splice(idx,1);schedules[currentShiftKey]={start:ss.join(','),end:es.join(',')};
     // If only 1 segment left, check if it matches A/B/C and update label
     if(ss.length===1)delete kitchenLabels[currentShiftKey];}
-    hideShiftPicker();reloadSchedule();saveData();showSuccess('Đã xóa khung giờ');
+    hideShiftPicker();reloadSchedule();saveData();showSuccess('Đã xóa khung giờ 已刪除時段');
 }
 // Render task tags inside shift picker
 function renderSpTasks(key){
-    var ta=taskAssignments[key]||[];
+    var ta=taskAssignments[key];ta=Array.isArray(ta)?ta:[];
     var tl=getTaskList(currentShiftDept);
     var h='';
     tl.forEach(function(tk){
         var isOn=ta.includes(tk.id);
-        h+='<span class="sp-task-tag'+(isOn?' on':'')+'" style="border-color:'+tk.color+';color:'+(isOn?'white':tk.color)+';background:'+(isOn?tk.color:'transparent')+'" onclick="toggleSpTask(\''+key+'\',\''+tk.id+'\')"><i class="fas '+(tk.icon||'fa-circle')+'"></i> '+tk.name+'</span>';
+        h+='<span class="sp-task-tag'+(isOn?' on':'')+'" style="border-color:'+tk.color+';color:'+(isOn?'white':tk.color)+';background:'+(isOn?tk.color:'transparent')+'" onclick="event.stopPropagation();toggleSpTask(\''+key+'\',\''+tk.id+'\')"><i class="fas '+(tk.icon||'fa-circle')+'"></i> '+tk.name+'</span>';
     });
-    h+='<span class="sp-task-tag" style="border-color:#999;color:#999;border-style:dashed" onclick="openTaskConfig()">+ Thêm</span>';
+    h+='<span class="sp-task-tag" style="border-color:#999;color:#999;border-style:dashed" onclick="event.stopPropagation();openTaskConfig()">+ Thêm</span>';
     document.getElementById('spTaskTags').innerHTML=h;
 }
 function toggleSpTask(key,taskId){
-    var ta=taskAssignments[key]||[];
+    var ta=taskAssignments[key];ta=Array.isArray(ta)?ta:[];
     if(ta.includes(taskId)){ta=ta.filter(function(x){return x!==taskId;});}
     else{ta.push(taskId);}
     if(ta.length)taskAssignments[key]=ta;else delete taskAssignments[key];
     renderSpTasks(key);
-    reloadSchedule();saveData();
+    saveData();
+    clearTimeout(window._taskReloadTimer);
+    window._taskReloadTimer=setTimeout(function(){reloadSchedule();},300);
 }
 function openCustomShiftPicker(){
     restorePickerButtons(); // Reset buttons first
@@ -3364,7 +3584,7 @@ function applyCustomShift(){
     }else{
         // Just set as active brush
         activeShiftBrush={s:s,e:e,l:fmt(s)+'-'+fmt(e)};
-        hideShiftPicker();renderQuickBars();showSuccess('Đã chọn: '+s+'-'+e+' — Click vào ô để gán');
+        hideShiftPicker();renderQuickBars();showSuccess('Đã chọn 已選: '+s+'-'+e+' — Click vào ô để gán 點擊格子分配');
     }
 }
 function pinCustomShift(){
@@ -3375,12 +3595,12 @@ function pinCustomShift(){
     if(schedDeptView==='kitchen'){
         // Check duplicate
         var exists=pinnedShiftsK.some(function(p){return p.s===s&&p.e===e;});
-        if(!exists){pinnedShiftsK.push(pin);showSuccess('Đã ghim: '+label);}
-        else{showSuccess('Đã tồn tại: '+label);}
+        if(!exists){pinnedShiftsK.push(pin);showSuccess('Đã ghim 已釘選: '+label);}
+        else{showSuccess('Đã tồn tại 已存在: '+label);}
     }else{
         var exists2=pinnedShiftsSV.some(function(p){return p.s===s&&p.e===e;});
-        if(!exists2){pinnedShiftsSV.push(pin);showSuccess('Đã ghim: '+label);}
-        else{showSuccess('Đã tồn tại: '+label);}
+        if(!exists2){pinnedShiftsSV.push(pin);showSuccess('Đã ghim 已釘選: '+label);}
+        else{showSuccess('Đã tồn tại 已存在: '+label);}
     }
     hideShiftPicker();renderQuickBars();saveData();
 }
@@ -3398,6 +3618,18 @@ function setSchedView(mode){
         bw.style.background='var(--primary)';bw.style.color='white';bw.className='btn btn-sm';
         bm.style.background='';bm.style.color='';bm.className='btn btn-outline btn-sm';
         gw.style.display='';gm.style.display='none';
+        // Sync week picker from current month view
+        var _mv=document.getElementById('scheduleMonth').value;
+        var _wv=document.getElementById('scheduleWeek').value;
+        if(_mv&&(!_wv||_wv.substring(0,7)!==_mv)){
+            var _mp=_mv.split('-');
+            // Set to first Monday of the month
+            var _fd=new Date(parseInt(_mp[0]),parseInt(_mp[1])-1,1);
+            var _dw=_fd.getDay();var _diff=(1-_dw+7)%7;
+            var _mon=new Date(_fd);_mon.setDate(_fd.getDate()+_diff);
+            if(_mon.getMonth()!==parseInt(_mp[1])-1)_mon=_fd; // if Monday is next month, use 1st
+            document.getElementById('scheduleWeek').valueAsDate=_mon;
+        }
         loadScheduleWeek();
     }else{
         bm.style.background='var(--primary)';bm.style.color='white';bm.className='btn btn-sm';
@@ -3419,6 +3651,7 @@ function schedNext(){
 }
 function loadScheduleMonth(){
     var mv=document.getElementById('scheduleMonth').value;if(!mv)return;
+    try{
     var p=mv.split('-'),year=parseInt(p[0]),month=parseInt(p[1]);
     var active=employees.filter(function(e){return !e.endDate&&!hiddenFromSchedule.has(e.id);});
     var kit=sortFTFirst(active.filter(function(e){return e.dept==='Bếp'||crossDeptSchedule.kitchen.has(e.id);}));
@@ -3487,7 +3720,7 @@ function loadScheduleMonth(){
                     }
                 }else{cellH='<span style="color:#ddd">-</span>';}
                 // Task tags for this cell
-                var ta=taskAssignments[key]||[];
+                var ta=taskAssignments[key];ta=Array.isArray(ta)?ta:[];
                 if(ta.length){cellH+='<div style="display:flex;gap:1px;justify-content:center;margin-top:1px">';ta.forEach(function(tid){var t=getAllTasks().find(function(x){return x.id===tid;});if(t)cellH+='<span style="width:6px;height:6px;border-radius:50%;background:'+t.color+';display:inline-block" title="'+t.name+'"></span>';});cellH+='</div>';}
                 h+='<td data-cellkey="'+key+'" data-celldept="Bếp" data-cellempid="'+emp.id+'" data-celldate="'+ds+'" data-empidx="'+kit.indexOf(emp)+'" data-dayidx="'+(i-1)+'" data-empcnt="'+kit.length+'" data-daycnt="'+daysInMonth+'" data-layout="vertical" style="padding:4px 3px;text-align:center;border-right:1px solid #f0f0f0;background:'+cellBg+';cursor:pointer" onclick="onCellClick(event,\''+key+'\',\'Bếp\',\''+emp.id+'\',\''+ds+'\')">'+cellH+'</td>';
             });
@@ -3646,6 +3879,7 @@ function loadScheduleMonth(){
 
     document.getElementById('scheduleContent').innerHTML=h;
     renderQuickBars();hideShiftPicker();
+    }catch(err){console.error('loadScheduleMonth error for '+mv+':',err);document.getElementById('scheduleContent').innerHTML='<div style="color:red;padding:20px;text-align:center"><i class="fas fa-exclamation-triangle"></i> Lỗi render tháng '+mv+': '+err.message+'</div>';}
 }
 
 // Hide/show employees
@@ -3691,8 +3925,8 @@ function updateSchedDeptCounts(){
     document.getElementById('sdtService').innerHTML='<i class="fas fa-concierge-bell"></i> Phục vụ 服務 <span style="font-size:10px;opacity:.8">('+sc+')</span>';
     document.getElementById('sdtSupport').innerHTML='<i class="fas fa-hands-helping"></i> Hỗ trợ khác 其他支援 <span style="font-size:10px;opacity:.8">('+hc+')</span>';
 }
-function hideFromSchedule(id){hiddenFromSchedule.add(id);reloadSchedule();showSuccess('Đã ẩn');}
-function showHiddenEmps(){if(!hiddenFromSchedule.size){showSuccess('Không có NV ẩn');return;}var names=Array.from(hiddenFromSchedule).map(function(id){var e=employees.find(function(x){return x.id===id;});return e?e.name:'?';}).join(', ');if(confirm('Đang ẩn: '+names+'\n\nHiện lại?')){hiddenFromSchedule.clear();reloadSchedule();showSuccess('Đã hiện');}}
+function hideFromSchedule(id){hiddenFromSchedule.add(id);reloadSchedule();showSuccess('Đã ẩn 已隱藏');}
+function showHiddenEmps(){if(!hiddenFromSchedule.size){showSuccess('Không có NV ẩn 無隱藏員工');return;}var names=Array.from(hiddenFromSchedule).map(function(id){var e=employees.find(function(x){return x.id===id;});return e?e.name:'?';}).join(', ');if(confirm('Đang ẩn 已隱藏: '+names+'\n\nHiện lại? 顯示？')){hiddenFromSchedule.clear();reloadSchedule();showSuccess('Đã hiện 已顯示');}}
 function addCrossDeptEmp(empId,targetDept){
     var setKey=targetDept==='Bếp'?'kitchen':'service';
     crossDeptSchedule[setKey].add(empId);
@@ -3709,7 +3943,7 @@ function openAddSupportEmpPopup(ev){
     var popup=document.getElementById('addEmpPopup');
     var allActive=employees.filter(function(e){return !e.endDate;});
     var available=allActive.filter(function(e){return !crossDeptSchedule.support.has(e.id);});
-    if(!available.length){showSuccess('Không có NV để thêm');return;}
+    if(!available.length){showSuccess('Không có NV để thêm 無可新增員工');return;}
     var h='<div style="font-weight:700;font-size:12px;padding:4px 8px;border-bottom:1px solid #eee;margin-bottom:4px;color:#6a1b9a"><i class="fas fa-hands-helping"></i> Thêm vào Hỗ trợ khác</div>';
     var bep=available.filter(function(e){return e.dept==='Bếp';});
     var pv=available.filter(function(e){return e.dept==='Phục vụ';});
@@ -3731,7 +3965,7 @@ function openAddSupportEmpPopup(ev){
 function addSupportEmp(empId){
     crossDeptSchedule.support.add(empId);
     saveData();reloadSchedule();
-    showSuccess('Đã thêm NV vào Hỗ trợ khác');
+    showSuccess('Đã thêm NV 已新增員工');
     var popup=document.getElementById('addEmpPopup');
     if(popup)popup.classList.remove('show');
 }
@@ -3740,7 +3974,7 @@ function openAddEmpPopup(ev,dept){ev.stopPropagation();var popup=document.getEle
     var hidden=employees.filter(function(e){return !e.endDate&&e.dept===dept&&hiddenFromSchedule.has(e.id);});
     var otherDept=dept==='Bếp'?'Phục vụ':'Bếp';
     var cross=employees.filter(function(e){return !e.endDate&&e.dept===otherDept&&!crossDeptSchedule[setKey].has(e.id);});
-    if(!hidden.length&&!cross.length){showSuccess('Không có NV để thêm');return;}
+    if(!hidden.length&&!cross.length){showSuccess('Không có NV để thêm 無可新增員工');return;}
     var h='<div style="font-weight:700;font-size:12px;padding:4px 8px;border-bottom:1px solid #eee;margin-bottom:4px">Thêm vào '+dept+'</div>';
     if(hidden.length){h+='<div style="font-size:10px;color:#666;padding:2px 8px;font-weight:600">NV '+dept+' (đang ẩn):</div>';
     hidden.forEach(function(e){h+='<div class="aep-item" onclick="unhideEmp(\''+e.id+'\')">'+e.name+' <span style="font-size:10px;color:var(--primary)">'+e.nameCN+'</span></div>';});}
@@ -3782,13 +4016,13 @@ function empDrop(e){
     ordered.splice(toIdx,0,moved);
     ordered.forEach(function(id,i){employeeOrder[id]=i;});
     _dragEmpId=null;
-    saveData();reloadSchedule();showSuccess('Đã di chuyển!');
+    saveData();reloadSchedule();showSuccess('Đã di chuyển! 已移動');
 }
 document.addEventListener('dragend',function(e){
     document.querySelectorAll('.sg-name').forEach(function(el){el.style.opacity='';el.style.borderTop='';});
 });
 
-function unhideEmp(id){hiddenFromSchedule.delete(id);document.getElementById('addEmpPopup').classList.remove('show');reloadSchedule();showSuccess('OK!');}
+function unhideEmp(id){hiddenFromSchedule.delete(id);document.getElementById('addEmpPopup').classList.remove('show');reloadSchedule();showSuccess('OK! 完成');}
 var _clipboardShift=null;
 document.addEventListener('click',function(e){
     var sp=document.getElementById('shiftPicker');if(sp.classList.contains('show')&&!sp.contains(e.target)){hideShiftPicker();}
@@ -3903,7 +4137,7 @@ function attPushUndo(description){
     if(attUndoStack.length>20)attUndoStack.shift();
 }
 function attUndo(){
-    if(!attUndoStack.length){showSuccess('Không có gì để hoàn tác');return;}
+    if(!attUndoStack.length){showSuccess('Không có gì để hoàn tác 無可復原項目');return;}
     var snap=attUndoStack.pop();
     schedules=snap.schedules;
     kitchenLabels=snap.kitchenLabels;
@@ -3947,7 +4181,7 @@ document.addEventListener('keydown',function(ev){
             });
             attSelectedCells={};
             saveData();loadAttendance();
-            showSuccess('Đã xóa '+keys.length+' ô');
+            showSuccess('Đã xóa 已刪除 '+keys.length+' ô');
             return;
         }
         // Ctrl+C: copy selected cells
@@ -3984,7 +4218,7 @@ document.addEventListener('keydown',function(ev){
         // Ctrl+V: paste
         if((ev.ctrlKey||ev.metaKey)&&ev.key==='v'){
             ev.preventDefault();
-            if(!attCopiedCells){showSuccess('Chưa copy gì!');return;}
+            if(!attCopiedCells){showSuccess('Chưa copy gì! 尚未複製');return;}
             // Find the top-left of current selection as paste anchor
             var empOrder=_attGetEmpOrder();
             var minDay=Infinity,minEmp=Infinity;
@@ -4029,7 +4263,7 @@ document.addEventListener('keydown',function(ev){
             });
             attSelectedCells={};
             saveData();loadAttendance();
-            showSuccess('Đã xóa override '+keys.length+' ô');
+            showSuccess('Đã xóa 已刪除 '+keys.length+' ô');
             return;
         }
     }
@@ -4056,7 +4290,7 @@ function bulkConfirmAttendance(){
         }
     });
     if(count>0){saveData();attSelectedCells={};loadAttendance();showSuccess('Đã xác nhận '+count+' ô 已確認 '+count+' 格');}
-    else{showSuccess('Các ô đã chọn đều đã xác nhận rồi');}
+    else{showSuccess('Đã xác nhận rồi 已確認');}
 }
 function bulkUnconfirmAttendance(){
     var keys=Object.keys(attSelectedCells);
@@ -4066,17 +4300,47 @@ function bulkUnconfirmAttendance(){
         if(attConfirmations[dk]){delete attConfirmations[dk];if(!_deletedKeys.attConfirmations)_deletedKeys.attConfirmations={};_deletedKeys.attConfirmations[dk]=1;count++;}
     });
     if(count>0){saveData();attSelectedCells={};loadAttendance();showSuccess('Đã hủy xác nhận '+count+' ô 已取消確認 '+count+' 格');}
-    else{showSuccess('Các ô đã chọn chưa được xác nhận');}
+    else{showSuccess('Chưa xác nhận 尚未確認');}
 }
 // ===== TASK SYSTEM =====
 
 // Task config
+var TASK_ICONS=['fa-flag','fa-star','fa-fire','fa-carrot','fa-utensils','fa-broom','fa-blender','fa-hand-holding-heart','fa-clipboard-list','fa-ellipsis-h','fa-circle','fa-check','fa-crown','fa-bolt','fa-heart','fa-thumbs-up','fa-bell','fa-glass-cheers','fa-ice-cream','fa-coffee','fa-mug-hot','fa-pizza-slice','fa-drumstick-bite','fa-fish','fa-pepper-hot','fa-lemon','fa-egg','fa-wine-bottle','fa-cocktail','fa-truck','fa-box','fa-gift','fa-tools','fa-paint-roller','fa-magic','fa-music','fa-camera','fa-user-shield','fa-handshake','fa-comments'];
+var _iconPickerTarget=null;
+function openIconPicker(target){
+    _iconPickerTarget=target;
+    var g=document.getElementById('iconPickerGrid');var h='';
+    TASK_ICONS.forEach(function(ic){
+        h+='<div onclick="selectIcon(\''+ic+'\')" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;font-size:16px;background:#f5f5f5;transition:background .15s" onmouseenter="this.style.background=\'#ddd\'" onmouseleave="this.style.background=\'#f5f5f5\'"><i class="fas '+ic+'"></i></div>';
+    });
+    g.innerHTML=h;
+    document.getElementById('iconPickerModal').classList.add('active');
+}
+function selectIcon(ic){
+    if(_iconPickerTarget==='new'){
+        document.getElementById('newTaskIconPreview').innerHTML='<i class="fas '+ic+'"></i>';
+        document.getElementById('newTaskIconPreview').dataset.icon=ic;
+    } else if(_iconPickerTarget){
+        // editing existing task: "K_2" or "SV_0"
+        var parts=_iconPickerTarget.split('_');var dk=parts[0];var idx=parseInt(parts[1]);
+        var list=dk==='K'?TASK_LIST_K:TASK_LIST_SV;
+        if(list[idx]){list[idx].icon=ic;openTaskConfig();renderQuickBars();renderTaskLegend();saveData();}
+    }
+    closeModal('iconPickerModal');
+}
+var _tcDragIdx=-1,_tcDragDept='';
 function openTaskConfig(){
     var h='';
     function renderDeptTasks(label,icon,list,deptKey){
         h+='<div style="margin-bottom:12px"><div style="font-weight:700;font-size:12px;color:'+(deptKey==='K'?'var(--kitchen)':'var(--service)')+';margin-bottom:6px"><i class="fas fa-'+icon+'"></i> '+label+'</div>';
         list.forEach(function(t,i){
-            h+='<div style="display:flex;align-items:center;gap:8px;padding:6px;border-bottom:1px solid #eee"><span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:12px;background:'+t.color+';color:white;font-size:12px;font-weight:600"><i class="fas '+(t.icon||'fa-circle')+'"></i> '+t.name+'</span><span style="flex:1"></span><button class="btn btn-sm btn-outline" onclick="removeTask(\''+deptKey+'\','+i+')"><i class="fas fa-trash" style="color:var(--danger)"></i></button></div>';
+            h+='<div draggable="true" data-dk="'+deptKey+'" data-idx="'+i+'" ondragstart="tcDragStart(event,\''+deptKey+'\','+i+')" ondragover="event.preventDefault();this.style.borderTop=\'3px solid var(--primary)\'" ondragleave="this.style.borderTop=\'none\'" ondrop="tcDrop(event,\''+deptKey+'\','+i+')" style="display:flex;align-items:center;gap:6px;padding:6px;border-bottom:1px solid #eee;cursor:grab;transition:border .15s">';
+            h+='<i class="fas fa-grip-vertical" style="color:#bbb;font-size:10px"></i>';
+            h+='<div onclick="openIconPicker(\''+deptKey+'_'+i+'\')" style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:'+t.color+';color:white;border-radius:6px;cursor:pointer;font-size:12px" title="Đổi icon 更換圖標"><i class="fas '+(t.icon||'fa-circle')+'"></i></div>';
+            h+='<input type="color" value="'+t.color+'" onchange="editTaskColor(\''+deptKey+'\','+i+',this.value)" style="width:26px;height:26px;padding:0;border:1px solid #ccc;border-radius:4px;cursor:pointer">';
+            h+='<input type="text" value="'+t.name+'" onchange="editTaskName(\''+deptKey+'\','+i+',this.value)" style="flex:1;border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-size:12px;font-weight:600">';
+            h+='<button class="btn btn-sm btn-outline" onclick="removeTask(\''+deptKey+'\','+i+')" title="Xóa 刪除"><i class="fas fa-trash" style="color:var(--danger)"></i></button>';
+            h+='</div>';
         });
         h+='</div>';
     }
@@ -4085,17 +4349,33 @@ function openTaskConfig(){
     document.getElementById('taskConfigList').innerHTML=h;
     document.getElementById('taskConfigModal').classList.add('active');
 }
+function editTaskName(dk,idx,val){var list=dk==='K'?TASK_LIST_K:TASK_LIST_SV;if(list[idx]&&val.trim()){list[idx].name=val.trim();renderQuickBars();renderTaskLegend();saveData();}}
+function editTaskColor(dk,idx,val){var list=dk==='K'?TASK_LIST_K:TASK_LIST_SV;if(list[idx]){list[idx].color=val;openTaskConfig();renderQuickBars();renderTaskLegend();saveData();}}
+function tcDragStart(e,dk,idx){_tcDragIdx=idx;_tcDragDept=dk;e.dataTransfer.effectAllowed='move';}
+function tcDrop(e,dk,idx){
+    e.preventDefault();e.target.closest('[draggable]').style.borderTop='none';
+    if(_tcDragDept!==dk)return;
+    var list=dk==='K'?TASK_LIST_K:TASK_LIST_SV;
+    if(_tcDragIdx===idx||_tcDragIdx<0||_tcDragIdx>=list.length)return;
+    var item=list.splice(_tcDragIdx,1)[0];
+    list.splice(idx,0,item);
+    openTaskConfig();renderQuickBars();renderTaskLegend();saveData();
+    showSuccess('Đã sắp xếp! 已排序');
+}
 function addCustomTask(){
     var name=document.getElementById('newTaskName').value.trim();
     var color=document.getElementById('newTaskColor').value;
     var dept=document.getElementById('newTaskDept').value;
+    var iconEl=document.getElementById('newTaskIconPreview');
+    var icon=iconEl.dataset.icon||'fa-circle';
     if(!name)return;
     var list=dept==='K'?TASK_LIST_K:TASK_LIST_SV;
-    list.push({id:'custom_'+Date.now(),name:name,color:color,icon:'fa-circle'});
+    list.push({id:'custom_'+Date.now(),name:name,color:color,icon:icon});
     document.getElementById('newTaskName').value='';
-    openTaskConfig();renderQuickBars();showSuccess('Đã thêm task!');
+    iconEl.innerHTML='<i class="fas fa-circle"></i>';delete iconEl.dataset.icon;
+    openTaskConfig();renderQuickBars();renderTaskLegend();saveData();showSuccess('Đã thêm task! 已新增任務');
 }
-function removeTask(deptKey,i){var list=deptKey==='K'?TASK_LIST_K:TASK_LIST_SV;list.splice(i,1);openTaskConfig();renderQuickBars();showSuccess('Đã xóa!');}
+function removeTask(deptKey,i){var list=deptKey==='K'?TASK_LIST_K:TASK_LIST_SV;if(!confirm('Xóa "'+list[i].name+'"? 確認刪除？'))return;list.splice(i,1);openTaskConfig();renderQuickBars();renderTaskLegend();saveData();showSuccess('Đã xóa! 已刪除');}
 function deleteTaskFromPicker(deptKey,idx,key){
     var list=deptKey==='K'?TASK_LIST_K:TASK_LIST_SV;
     if(idx<0||idx>=list.length)return;
@@ -4107,7 +4387,7 @@ function deleteTaskFromPicker(deptKey,idx,key){
         taskAssignments[k]=taskAssignments[k].filter(function(t){return t!==taskId;});
         if(!taskAssignments[k].length)delete taskAssignments[k];
     });
-    renderSpTasks(key);reloadSchedule();saveData();showSuccess('Đã xóa task!');
+    renderSpTasks(key);reloadSchedule();saveData();showSuccess('Đã xóa task! 已刪除任務');
 }
 
 // Task view tab
@@ -4123,7 +4403,7 @@ function loadTaskView(){
         tl.forEach(function(t){h+='<th style="background:'+t.color+';color:white;padding:6px;font-size:10px;text-align:center;min-width:50px" title="'+t.name+'"><i class="fas '+(t.icon||'fa-circle')+'"></i><br><span style="font-size:8px">'+t.name+'</span></th>';});
         h+='</tr></thead><tbody>';
         emps.forEach(function(emp){
-            var k=di+'-'+emp.id;var ta=taskAssignments[k]||[];
+            var k=di+'-'+emp.id;var ta=taskAssignments[k];ta=Array.isArray(ta)?ta:[];
             h+='<tr><td style="padding:4px 6px;font-weight:600;font-size:11px;border:1px solid #eee">'+emp.name+' <span style="font-size:9px;color:var(--primary)">'+emp.nameCN+'</span></td>';
             tl.forEach(function(t){
                 var has=ta.includes(t.id);
@@ -4137,16 +4417,17 @@ function loadTaskView(){
     buildTaskTable('Phục vụ 服務','service',svc,TASK_LIST_SV);
     h+='<div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap">';
     getAllTasks().forEach(function(t){
-        var count=0;allEmps.forEach(function(emp){var ta=taskAssignments[di+'-'+emp.id]||[];if(ta.includes(t.id))count++;});
+        var count=0;allEmps.forEach(function(emp){var ta=taskAssignments[di+'-'+emp.id];ta=Array.isArray(ta)?ta:[];if(ta.includes(t.id))count++;});
         h+='<div style="background:white;padding:8px 12px;border-radius:6px;border-left:4px solid '+t.color+';font-size:12px"><strong><i class="fas '+(t.icon||'fa-circle')+'"></i> '+t.name+'</strong>: '+count+' người</div>';
     });
     h+='</div>';
     document.getElementById('taskContent').innerHTML=h;
 }
 function toggleTaskQuick(key,taskId){
-    var ta=taskAssignments[key]||[];
+    var ta=taskAssignments[key];ta=Array.isArray(ta)?ta:[];
     if(ta.includes(taskId))ta=ta.filter(function(x){return x!==taskId;});else ta.push(taskId);
     if(ta.length)taskAssignments[key]=ta;else delete taskAssignments[key];
+    saveData();
     loadTaskView();
 }
 function prevTaskDay(){var d=document.getElementById('taskDate'),dt=new Date(d.value);dt.setDate(dt.getDate()-1);d.valueAsDate=dt;loadTaskView();}
@@ -4160,7 +4441,7 @@ var qrSheetConfig={
     getUrl:function(){return 'https://docs.google.com/spreadsheets/d/'+this.fileId+'/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent(this.sheetName);}
 };
 var empPortalConfig={
-    apiUrl:'https://script.google.com/macros/s/AKfycbyhh2LOT1O9YBj2aJm2uWh-vaVjbb_Ny--3FD94HIoN4iBl9F9NXBZwzEk-90vnBcP2/exec',
+    apiUrl:'https://script.google.com/macros/s/AKfycbzQBhNS_FhLo-biBQ_tRsJEekAVWqXFYw8bOAeAHJDm6fewT0KAjaCCuAXPdODv4BUW/exec',
     bossPassword:'quachgia2026'
 };
 // === CLOUD SYNC CONFIG ===
@@ -4449,7 +4730,7 @@ function _dayInlineSave(dk,dateStr){
         if(!parsed){showError('Sai format. VD: 10-13, 16-22');return;}
         attTimesheetData[dk]={checkin:parsed.first,checkout:parsed.last,hours:parsed.totalH,segments:parsed.segments};
     }else if(attTimesheetData[dk]){delete attTimesheetData[dk];if(!_deletedKeys.attTimesheetData)_deletedKeys.attTimesheetData={};_deletedKeys.attTimesheetData[dk]=1;}
-    saveData();openDayDetail(dateStr);loadAttendance();showSuccess('\u0110\u00e3 l\u01b0u gi\u1edd th\u1ef1c!');
+    saveData();openDayDetail(dateStr);loadAttendance();showSuccess('\u0110\u00e3 l\u01b0u gi\u1edd th\u1ef1c! \u5df2\u5132\u5b58');
 }
 function _dayDetailEdit(dk,empId,dateStr){
     var sh=schedules[dk]||{};
@@ -4493,10 +4774,10 @@ function _dayDetailSave(dk,empId,dateStr){
     document.getElementById('dayDetailEditModal').classList.remove('active');
     openDayDetail(dateStr);
     loadAttendance();
-    showSuccess('Đã lưu!');
+    showSuccess('Đã lưu! 已儲存');
 }
 function _dayDetailDel(dk,dateStr){
-    delete schedules[dk];if(!_deletedKeys.schedules)_deletedKeys.schedules={};_deletedKeys.schedules[dk]=1;delete attTimesheetData[dk];if(!_deletedKeys.attTimesheetData)_deletedKeys.attTimesheetData={};_deletedKeys.attTimesheetData[dk]=1;delete attConfirmations[dk];if(!_deletedKeys.attConfirmations)_deletedKeys.attConfirmations={};_deletedKeys.attConfirmations[dk]=1;
+    delete schedules[dk];if(!_deletedKeys.schedules)_deletedKeys.schedules={};_deletedKeys.schedules[dk]=1;delete taskAssignments[dk];delete attTimesheetData[dk];if(!_deletedKeys.attTimesheetData)_deletedKeys.attTimesheetData={};_deletedKeys.attTimesheetData[dk]=1;delete attConfirmations[dk];if(!_deletedKeys.attConfirmations)_deletedKeys.attConfirmations={};_deletedKeys.attConfirmations[dk]=1;
     saveData();
     document.getElementById('dayDetailEditModal').classList.remove('active');
     openDayDetail(dateStr);
@@ -4504,7 +4785,7 @@ function _dayDetailDel(dk,dateStr){
     showSuccess('Đã xóa ca! 已刪除班次');
 }
 function _dayDetailDel2(dk,dateStr){
-    delete schedules[dk];if(!_deletedKeys.schedules)_deletedKeys.schedules={};_deletedKeys.schedules[dk]=1;delete attTimesheetData[dk];if(!_deletedKeys.attTimesheetData)_deletedKeys.attTimesheetData={};_deletedKeys.attTimesheetData[dk]=1;delete attConfirmations[dk];if(!_deletedKeys.attConfirmations)_deletedKeys.attConfirmations={};_deletedKeys.attConfirmations[dk]=1;
+    delete schedules[dk];if(!_deletedKeys.schedules)_deletedKeys.schedules={};_deletedKeys.schedules[dk]=1;delete taskAssignments[dk];delete attTimesheetData[dk];if(!_deletedKeys.attTimesheetData)_deletedKeys.attTimesheetData={};_deletedKeys.attTimesheetData[dk]=1;delete attConfirmations[dk];if(!_deletedKeys.attConfirmations)_deletedKeys.attConfirmations={};_deletedKeys.attConfirmations[dk]=1;
     saveData();
     openDayDetail(dateStr);
     loadAttendance();
@@ -5013,7 +5294,7 @@ function showShiftDropdown(td){
             }
             attTimesheetData[dk]={checkin:firstIn,checkout:lastOut,hours:totalHrs,segments:segments};
             saveData();loadAttendance();closeShiftDropdown();
-            showSuccess('Giờ thực: '+firstIn+' → '+lastOut+' ('+totalHrs.toFixed(1)+'h)');
+            showSuccess('Giờ thực 實際: '+firstIn+'→'+lastOut+' ('+totalHrs.toFixed(1)+'h)');
         });
     }
     var actualClearBtn=dd.querySelector('#sdActualClearBtn');
@@ -5021,7 +5302,7 @@ function showShiftDropdown(td){
         actualClearBtn.addEventListener('click',function(){
             delete attTimesheetData[dk];if(!_deletedKeys.attTimesheetData)_deletedKeys.attTimesheetData={};_deletedKeys.attTimesheetData[dk]=1;
             saveData();loadAttendance();closeShiftDropdown();
-            showSuccess('Đã xóa giờ thực tế');
+            showSuccess('Đã xóa giờ thực tế 已刪除實際時間');
         });
     }
     var saveBtn=dd.querySelector('#sdSaveBtn');
@@ -5038,7 +5319,7 @@ function showShiftDropdown(td){
     dd.querySelector('#sdClearBtn').addEventListener('click',function(){
         var ddk=mi+'-'+String(day).padStart(2,'0')+'-'+empId;
         delete schedules[ddk];if(!_deletedKeys.schedules)_deletedKeys.schedules={};_deletedKeys.schedules[ddk]=1;delete kitchenLabels[ddk];
-        saveData();loadAttendance();closeShiftDropdown();showSuccess('Đã xóa!');
+        saveData();loadAttendance();closeShiftDropdown();showSuccess('Đã xóa! 已刪除');
     });
     setTimeout(function(){document.addEventListener('click',closeShiftDropdownHandler);},10);
 }
@@ -5055,7 +5336,7 @@ function sdApplyPreset(btn,empId,day,mi,s,e,label){
     }else{
         toggleShift(dk,s,e);
     }
-    saveData();loadAttendance();closeShiftDropdown();showSuccess('Đã cập nhật!');
+    saveData();loadAttendance();closeShiftDropdown();showSuccess('Đã cập nhật! 已更新');
 }
 
 function openAttCellEdit(empId,day,mi){
@@ -5094,7 +5375,7 @@ function saveAttCellEdit(empId,day,mi){
     var dk=currentAttEditDk||(mi+'-'+String(day).padStart(2,'0')+'-'+empId);if(!schedules[dk]){var _f=findScheduleForEmp(mi+'-'+String(day).padStart(2,'0'),empId);dk=_f.dk;}
     if(s&&e){schedules[dk]={start:s,end:e};}
     else{delete schedules[dk];if(!_deletedKeys.schedules)_deletedKeys.schedules={};_deletedKeys.schedules[dk]=1;}
-    saveData();closeModal('attDetailModal');loadAttendance();showSuccess('Đã lưu!');
+    saveData();closeModal('attDetailModal');loadAttendance();showSuccess('Đã lưu! 已儲存');
 }
 function toggleShiftAndRefresh(btn,empId,day,mi,s,e,dept){
     var dk=currentAttEditDk||(mi+'-'+String(day).padStart(2,'0')+'-'+empId);if(!schedules[dk]){var _f=findScheduleForEmp(mi+'-'+String(day).padStart(2,'0'),empId);dk=_f.dk;}
@@ -5116,14 +5397,14 @@ function toggleShiftAndRefresh(btn,empId,day,mi,s,e,dept){
     }
     saveData();loadAttendance();
     openAttCellEdit(empId,day,mi);
-    showSuccess('Đã cập nhật!');
+    showSuccess('Đã cập nhật! 已更新');
 }
 function clearShiftAndRefresh(empId,day,mi){
     var dk=currentAttEditDk||(mi+'-'+String(day).padStart(2,'0')+'-'+empId);if(!schedules[dk]){var _f=findScheduleForEmp(mi+'-'+String(day).padStart(2,'0'),empId);dk=_f.dk;}
     delete schedules[dk];if(!_deletedKeys.schedules)_deletedKeys.schedules={};_deletedKeys.schedules[dk]=1;delete scheduleDepts[dk];
     saveData();loadAttendance();
     openAttCellEdit(empId,day,mi);
-    showSuccess('Đã xóa tất cả ca!');
+    showSuccess('Đã xóa tất cả ca! 已刪除所有班次');
 }
 function addCustomShiftFromEdit(empId,day,mi){
     var s=document.getElementById('attEditStart').value;
@@ -5134,7 +5415,7 @@ function addCustomShiftFromEdit(empId,day,mi){
     if(!scheduleDepts[dk]){var _emp2=employees.find(function(x){return x.id===empId;});if(_emp2)scheduleDepts[dk]=_emp2.dept;}
     saveData();loadAttendance();
     openAttCellEdit(empId,day,mi);
-    showSuccess('Đã thêm '+s+'-'+e);
+    showSuccess('Đã thêm 已新增 '+s+'-'+e);
 }
 function toggleShift(dk,s,e){
     // Toggle a shift in the multi-shift list for key dk
@@ -5187,7 +5468,7 @@ function quickSaveShift(empId,day,mi,s,e){
     }else{
         toggleShift(dk,s,e);
     }
-    saveData();closeModal('attDetailModal');loadAttendance();showSuccess('Đã lưu!');
+    saveData();closeModal('attDetailModal');loadAttendance();showSuccess('Đã lưu! 已儲存');
 }
 function inlineEditConvert(td){
     var empId=td.getAttribute('data-eid');
@@ -5300,7 +5581,7 @@ function fetchQRAttendance(callback){
             }
             saveData();
             if(statusEl)statusEl.innerHTML='<i class="fas fa-check-circle" style="color:#2e7d32"></i> Đồng bộ '+count+' bản ghi';
-            showSuccess('Đồng bộ chấm công QR: '+count+' bản ghi!');
+            showSuccess('Đồng bộ QR 同步: '+count+' 筆');
             loadAttendance();
         }catch(err){
             console.error('QR parse error:',err);
@@ -5381,7 +5662,7 @@ function processTimesheetData(data,mi){
             }
         }
     }
-    loadAttendance();showSuccess('Đã nhập '+count+' bản ghi!');
+    loadAttendance();showSuccess('Đã nhập 已匯入 '+count+' 筆');
 }
 
 function syncScheduleToAttendance(){
@@ -5402,7 +5683,7 @@ function syncScheduleToAttendance(){
             }
         }
     });
-    loadAttendance();showSuccess('Đồng bộ '+count+' ô!');
+    loadAttendance();showSuccess('Đồng bộ 同步 '+count+' ô');
 }
 
 function exportAttendance(){
@@ -5525,7 +5806,7 @@ function saveCrossRate(empId,mi,targetDept){
     if(!payrollOverrides[key])payrollOverrides[key]={};
     payrollOverrides[key].crossRate=num;
     saveData();loadPayroll();
-    showSuccess('Đã cập nhật lương hỗ trợ: '+formatCurrency(num));
+    showSuccess('Đã cập nhật 已更新: '+formatCurrency(num));
 }
 function setCrossDeptHours(empId,mi,targetDept){
     var emp=employees.find(function(e){return e.id===empId;});if(!emp)return;
@@ -5546,7 +5827,7 @@ function setCrossDeptHours(empId,mi,targetDept){
         if(valOt!==null){var numOt=parseFloat(valOt);if(!isNaN(numOt)&&numOt>=0)payrollOverrides[key].crossOt=numOt;}
     }
     saveData();loadPayroll();
-    showSuccess('Đã cập nhật giờ công hỗ trợ');
+    showSuccess('Đã cập nhật giờ công 已更新工時');
 }
 function loadPayroll(){
     var mi=document.getElementById('payrollMonth').value;if(!mi)return;
@@ -5605,7 +5886,7 @@ function excludeFromPayroll(empId){
         payrollExclude[incKey]=payrollExclude[incKey].filter(function(id){return id!==empId;});
     }
     saveData();loadPayroll();
-    showSuccess('Đã xóa khỏi bảng lương!');
+    showSuccess('Đã xóa khỏi bảng lương! 已從薪資表移除');
 }
 function includeToPayroll(empId){
     var mi=document.getElementById('payrollMonth').value;if(!mi)return;
@@ -5622,7 +5903,7 @@ function includeToPayroll(empId){
         if(payrollExclude[incKey].indexOf(empId)<0)payrollExclude[incKey].push(empId);
     }
     saveData();loadPayroll();
-    showSuccess('Đã thêm vào bảng lương!');
+    showSuccess('Đã thêm vào bảng lương! 已加入薪資表');
 }
 function showAddPayrollEmp(){
     var mi=document.getElementById('payrollMonth').value;if(!mi)return;
@@ -5770,15 +6051,11 @@ function openPaysheetEmp(empId,mi){
     var netPay=totalPay-totalDeduct;
     var fc=function(n){return formatCurrency(Math.round(n));};
     // ========== BUILD ATTENDANCE TAB ==========
-    var attH='<div id="psAttCapture" style="background:white;padding:12px">';
-    attH+='<div style="text-align:center;margin-bottom:10px"><div style="font-size:16px;font-weight:700;color:#1b5e20">BẢNG CHẤM CÔNG THÁNG '+m+'/'+y+'</div>';
+    var attH='<div id="psAttCapture" style="background:white;padding:8px;display:inline-block">';
+    attH+='<div style="text-align:center;margin-bottom:6px"><div style="font-size:14px;font-weight:700;color:#1b5e20">BẢNG CHẤM CÔNG THÁNG '+m+'/'+y+'</div>';
     attH+='<div style="font-size:12px;margin-top:4px"><b>'+emp.name+'</b> '+emp.nameCN+' — '+emp.position+' ('+emp.id+')</div></div>';
     // Build convert table (like openAttDetailConvert)
-    attH+='<div><table style="border-collapse:collapse;font-size:11px;width:100%"><thead><tr style="background:#333;color:white">';
-    attH+='<th style="padding:5px 8px;min-width:50px;background:#333;font-size:10px">Loại</th>';
-    for(var i=1;i<=days;i++){var d=new Date(y,m-1,i);var dw=d.getDay();var we=dw===0||dw===6;
-        attH+='<th style="padding:3px;min-width:30px;text-align:center;background:'+(we?'#d4a017':'#555')+';font-size:8px">'+dayNames[dw]+'<br>'+i+'</th>';}
-    attH+='<th style="padding:5px;background:#2e7d32;min-width:44px;text-align:center;font-size:9px">Tổng</th></tr></thead><tbody>';
+    
     var rows={nc:[],le:[],ot:[],pn:[],vr:[],kp:[],late:[]};
     var totals={nc:0,le:0,ot:0,pn:0,vr:0,kp:0,late:0,ncDaysCount:0};
     for(var i=1;i<=days;i++){var _db9=mi+'-'+String(i).padStart(2,'0');var _sf9=findScheduleForEmp(_db9,emp.id);var dk=_sf9.dk;
@@ -5816,31 +6093,58 @@ function openPaysheetEmp(empId,mi){
         {key:'nc',label:'GC 实时',bg:'#e8f5e9'},
         {key:'le',label:'Lễ 假期假日',bg:'#fffde7'}
     ];
-    rowDefs.forEach(function(rd){
-        var data=rows[rd.key];var total=totals[rd.key];
-        var isLate=rd.key==='late';
-        var isNCFixed=rd.key==='nc'&&wt==='monthly_fixed';
-        var isLeFixed=rd.key==='le'&&wt==='monthly_fixed';
-        attH+='<tr><td style="padding:4px 6px;border:1px solid #ddd;font-weight:700;background:'+rd.bg+';font-size:10px;white-space:nowrap">'+rd.label+'</td>';
-        for(var j=0;j<data.length;j++){var v=data[j];
-            var dv='';if(v>0){if(isLate)dv=v+'p';else if(isNCFixed||isLeFixed)dv='1';else dv=v%1===0?String(v):v.toFixed(1);}
-            attH+='<td style="padding:2px;text-align:center;border:1px solid #eee;background:'+(v>0?rd.bg:'')+';font-size:10px;font-weight:'+(v>0?'600':'400')+'">'+dv+'</td>';}
-        var totalDisp;if(isLate)totalDisp=total>0?total+'p':'0';else if(isNCFixed)totalDisp=String(totals.ncDaysCount);else if(isLeFixed){var _leDC3=0;rows.le.forEach(function(v){if(v>0)_leDC3++;});totalDisp=String(_leDC3);}else totalDisp=total%1===0?String(total):total.toFixed(1);
-        attH+='<td style="padding:4px;text-align:center;border:1px solid #ddd;font-weight:800;background:'+rd.bg+';font-size:11px">'+totalDisp+'</td></tr>';
+
+    // Vertical layout: each row = 1 day — only show columns with data
+    var _vAllCols=isFT?[{key:'nc',label:'NC 工時',bg:'#e8f5e9'},{key:'le',label:'Lễ 假日',bg:'#fffde7'},{key:'ot',label:'TC 加班',bg:'#fff3e0'},{key:'pn',label:'PN 平假',bg:'#f3e5f5'},{key:'vr',label:'VR 事假',bg:'#fff'},{key:'kp',label:'KP 曠工',bg:'#ffcdd2'}]:[{key:'nc',label:'GC 實時',bg:'#e8f5e9'},{key:'le',label:'Lễ 假日',bg:'#fffde7'}];
+    // Filter: only keep columns that have non-zero total (NC always shown)
+    var _vCols=_vAllCols.filter(function(c){return c.key==='nc'||totals[c.key]>0;});
+    var _mxW=_vCols.length<=2?'220px':(_vCols.length<=3?'280px':'340px');
+    attH+='<div style="max-width:'+_mxW+'"><table style="border-collapse:collapse;font-size:10px;width:100%"><thead><tr style="background:linear-gradient(135deg,#1b5e20,#2e7d32);color:white">';
+    attH+='<th style="padding:4px 6px;font-size:10px;width:30px;text-align:center">Ngày<br><span style="font-size:8px">日</span></th>';
+    attH+='<th style="padding:4px 4px;font-size:10px;width:24px;text-align:center">Thứ<br><span style="font-size:8px">曜</span></th>';
+    _vCols.forEach(function(c){attH+='<th style="padding:4px 6px;font-size:10px;text-align:center;font-weight:700">'+c.label+'</th>';});
+    attH+='</tr></thead><tbody>';
+    for(var vi=0;vi<days;vi++){
+        var _vd=new Date(y,m-1,vi+1);var _vdw=_vd.getDay();var _vwe=_vdw===0||_vdw===6;
+        var _vHasData=false;_vCols.forEach(function(c){if(rows[c.key][vi]>0)_vHasData=true;});
+        if(!_vHasData)continue;
+        attH+='<tr style="border-bottom:1px solid #e8e8e8;background:'+(_vwe?'#fff8e1':'white')+'">';
+        attH+='<td style="padding:3px 6px;font-weight:700;font-size:11px;text-align:center">'+(vi+1)+'</td>';
+        attH+='<td style="padding:3px 4px;font-size:10px;text-align:center;color:'+(_vwe?'#d4a017':'#888')+'">'+dayNames[_vdw]+'</td>';
+        _vCols.forEach(function(c){
+            var v=rows[c.key][vi];
+            var dv='';
+            if(v>0){
+                if(c.key==='nc'&&wt==='monthly_fixed')dv='1';
+                else if(c.key==='le'&&wt==='monthly_fixed')dv='1';
+                else dv=v%1===0?String(v):v.toFixed(1);
+            }
+            attH+='<td style="padding:3px 6px;text-align:center;background:'+(v>0?c.bg:'')+';font-size:12px;font-weight:'+(v>0?'700':'400')+';color:'+(v>0?'#333':'')+'">'+dv+'</td>';
+        });
+        attH+='</tr>';
+    }
+    // Total row
+    attH+='<tr style="background:linear-gradient(135deg,#1b5e20,#2e7d32);color:white;font-weight:800"><td colspan="2" style="padding:5px 6px;font-size:11px;text-align:center">Tổng 合計</td>';
+    _vCols.forEach(function(c){
+        var total=totals[c.key];var td2='';
+        if(c.key==='nc'&&wt==='monthly_fixed')td2=String(totals.ncDaysCount);
+        else if(c.key==='le'&&wt==='monthly_fixed'){var _leDC3=0;rows.le.forEach(function(v){if(v>0)_leDC3++;});td2=String(_leDC3);}
+        else td2=total%1===0?String(total):total.toFixed(1);
+        attH+='<td style="padding:5px 6px;text-align:center;font-size:13px;font-weight:800">'+td2+'</td>';
     });
-    attH+='</tbody></table></div>';
+    attH+='</tr></tbody></table></div>';
     // Summary badges
-    attH+='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:12px">';
-    var _psBadgeNC=isFT?(wt==='monthly_fixed'?totals.ncDaysCount+' ngày':(totals.nc/effH).toFixed(1)+' ngày'):totals.nc.toFixed(1)+'h';
-    attH+='<div style="background:#e8f5e9;padding:6px 14px;border-radius:6px;font-weight:600"><b>'+(isFT?'Tổng công':'Tổng giờ')+':</b> '+_psBadgeNC+'</div>';
-    if(totals.ot>0)attH+='<div style="background:#fff3e0;padding:6px 14px;border-radius:6px;font-weight:600"><b>Tăng ca:</b> '+totals.ot.toFixed(1)+'h</div>';
-    if(totals.le>0){var _leDC2=0;rows.le.forEach(function(v){if(v>0)_leDC2++;});attH+='<div style="background:#fffde7;padding:6px 14px;border-radius:6px;font-weight:600"><b>Lễ:</b> '+(isFT?_leDC2+' ngày':totals.le.toFixed(1)+'h')+'</div>';}
-    attH+='</div></div>';
+    attH+='<div style="max-width:'+_mxW+';margin:6px 0 0;display:flex;gap:6px;flex-wrap:wrap;font-size:10px">';
+    var _psBadgeNC=isFT?(wt==='monthly_fixed'?totals.ncDaysCount+' ngày':(totals.nc/effH).toFixed(2)+' ngày'):totals.nc.toFixed(1)+'h';
+    attH+='<div style="background:#e8f5e9;padding:3px 8px;border-radius:4px;font-weight:600"><b>'+(isFT?'Tổng công':'Tổng giờ')+':</b> '+_psBadgeNC+'</div>';
+    if(totals.ot>0)attH+='<div style="background:#fff3e0;padding:3px 8px;border-radius:4px;font-weight:600"><b>Tăng ca:</b> '+totals.ot.toFixed(1)+'h</div>';
+    if(totals.le>0){var _leDC2=0;rows.le.forEach(function(v){if(v>0)_leDC2++;});attH+='<div style="background:#fffde7;padding:3px 8px;border-radius:4px;font-weight:600"><b>Lễ:</b> '+(isFT?_leDC2+' ngày':totals.le.toFixed(1)+'h')+'</div>';}
+    attH+='</div>';
     
     // Cross-dept full section
     var _isCrossK=crossDeptSchedule.kitchen.has(emp.id)&&emp.dept!=='Bếp';
     var _isCrossS=crossDeptSchedule.service.has(emp.id)&&emp.dept!=='Phục vụ';
-    var crossAttH='';var crossSalH='';
+    var crossAttH='';var crossSalH='';var _cNetPay=0;
     if(_isCrossK||_isCrossS){
         var _crossTarget=_isCrossK?'Bếp':'Phục vụ';
         var _crossCN=_isCrossK?'廚房':'外場';
@@ -5943,7 +6247,7 @@ function openPaysheetEmp(empId,mi){
         var _cTotalDeduct=0;_cDeductItems.forEach(function(d){_cTotalDeduct+=d.amount||0;});
         var _cTotalOther=0;_cOtherItems.forEach(function(o){_cTotalOther+=o.amount||0;});
         var _cTotalPay=_cSb+_cOtPay+_cLePay+_cTotalBonus+_cTotalOther;
-        var _cNetPay=_cTotalPay-_cTotalDeduct;
+        _cNetPay=_cTotalPay-_cTotalDeduct;
         crossSalH+='<div style="margin-top:16px;border:2px solid #e65100;border-radius:8px;overflow:hidden">';
         crossSalH+='<div style="background:linear-gradient(135deg,#e65100,#f57c00);color:white;padding:8px 14px;font-size:13px;font-weight:700"><i class="fas fa-exchange-alt"></i> Hỗ trợ '+_crossTarget+' 支援'+_crossCN+'</div>';
         crossSalH+='<div style="padding:8px;background:#fff8f0">';
@@ -5976,19 +6280,26 @@ function openPaysheetEmp(empId,mi){
         crossSalH+='</table></div></div>';
     }
     attH+=crossAttH;
+    attH+='</div>'; // close psAttCapture
     // ========== BUILD SALARY TAB ==========
-    var salH='<div id="psSalCapture" style="background:white;padding:12px">';
+    var salH='<div id="psSalCapture" style="background:white;padding:8px;max-width:500px;margin:0 auto">';
     salH+='<div style="text-align:center;margin-bottom:10px"><div style="font-size:16px;font-weight:700;color:#1a237e">CHI TIẾT LƯƠNG THÁNG '+m+'/'+y+' 薪資明細</div>';
     salH+='<div style="font-size:12px;margin-top:4px"><b>'+emp.name+'</b> '+emp.nameCN+' — '+emp.position+' ('+emp.id+')</div>';
-    salH+='<div style="font-size:10px;color:#666;margin-top:2px">Vào: '+emp.startDate+' | '+(isFT?'Fulltime':'Part-time')+' | '+emp.dept+'</div></div>';
+    salH+='<div style="font-size:10px;color:#666;margin-top:2px">Vào: '+emp.startDate+' | '+(isFT?'Fulltime':'Part-time')+' | '+emp.dept+'</div>';
+    if(isInProbPeriod(emp,mi)){
+        var _probInfo=isInProbation(emp,mi)?'<span style="color:#2e7d32"> ✓ Lương TV: '+fc(emp.probBaseSalary)+'</span>':'<span style="color:#c62828"> ✗ Chưa nhập lương TV</span>';
+        salH+='<div style="font-size:10px;color:#e65100;margin-top:2px;font-weight:600;background:#fff3e0;padding:4px 10px;border-radius:4px;display:inline-block"><i class="fas fa-hourglass-half"></i> Thử việc 試用期 ('+emp.probPeriod+') '+_probInfo+'</div>';
+    }
+    if(_isCrossK||_isCrossS){salH+='<div style="font-size:10px;color:#e65100;margin-top:2px;font-weight:600"><i class="fas fa-exchange-alt"></i> Hỗ trợ '+(_isCrossK?'Bếp':'Phục vụ')+' 支援'+(_isCrossK?'廚房':'外場')+'</div>';}
+    salH+='</div>';
     function sRow(label,val,opts){
         opts=opts||{};
         salH+='<tr style="background:'+(opts.bg||'white')+';border-bottom:1px solid #eee">';
-        salH+='<td style="padding:8px 14px;'+(opts.bold?'font-weight:700;':'')+'color:'+(opts.color||'#333')+';font-size:11px">'+label+'</td>';
-        salH+='<td style="padding:8px 14px;text-align:right;'+(opts.bold?'font-weight:700;':'')+'color:'+(opts.color||'#333')+';font-size:11px;width:40%">'+val+'</td></tr>';
+        salH+='<td style="padding:6px 10px;'+(opts.bold?'font-weight:700;':'')+'color:'+(opts.color||'#333')+';font-size:11px">'+label+'</td>';
+        salH+='<td style="padding:6px 10px;text-align:right;'+(opts.bold?'font-weight:700;':'')+'color:'+(opts.color||'#333')+';font-size:11px;width:35%">'+val+'</td></tr>';
     }
     // THU NHẬP
-    salH+='<div style="background:linear-gradient(135deg,#1a237e,#283593);color:white;padding:8px 14px;border-radius:6px 6px 0 0;font-size:12px;font-weight:700"><i class="fas fa-money-bill-wave"></i> THU NHẬP 收入</div>';
+    salH+='<div style="background:linear-gradient(135deg,#1a237e,#283593);color:white;padding:6px 10px;border-radius:6px 6px 0 0;font-size:11px;font-weight:700"><i class="fas fa-money-bill-wave"></i> THU NHẬP 收入</div>';
     salH+='<table style="width:100%;border-collapse:collapse;font-size:11px;border:1px solid #e0e0e0">';
     if(isFT){
         if(wt==='monthly_fixed'){
@@ -5996,7 +6307,7 @@ function openPaysheetEmp(empId,mi){
         }else if(wt==='hourly'){
             sRow('Lương giờ <span style="font-size:9px;color:#888">時薪</span>',fc(emp.hourlyRate||0));
         }else{
-            sRow('Lương cơ bản <span style="font-size:9px;color:#888">基本薪資</span>',fc(_es.baseSalary));
+            sRow('Lương cơ bản <span style="font-size:9px;color:#888">基本薪資</span>'+(isInProbation(emp,mi)?' <span style="font-size:9px;color:#e65100;font-weight:700">(Thử việc 試用)</span>':''),fc(_es.baseSalary));
         }
         if(wt!=='monthly_fixed'&&wt!=='hourly'){
             sRow('PC Trách nhiệm <span style="font-size:9px;color:#888">責任津貼</span>',fc(_es.responsibility));
@@ -6009,7 +6320,7 @@ function openPaysheetEmp(empId,mi){
     }
     salH+='</table>';
     // NGÀY CÔNG & TIỀN CÔNG
-    salH+='<div style="background:linear-gradient(135deg,#1b5e20,#2e7d32);color:white;padding:8px 14px;font-size:12px;font-weight:700;margin-top:12px"><i class="fas fa-calendar-check"></i> NGÀY CÔNG & TIỀN CÔNG 工時與工資</div>';
+    salH+='<div style="background:linear-gradient(135deg,#1b5e20,#2e7d32);color:white;padding:6px 10px;font-size:11px;font-weight:700;margin-top:8px"><i class="fas fa-calendar-check"></i> NGÀY CÔNG & TIỀN CÔNG 工時與工資</div>';
     salH+='<table style="width:100%;border-collapse:collapse;font-size:11px;border:1px solid #e0e0e0">';
     if(isFT){
         sRow('Ngày công thực tế <span style="font-size:9px;color:#888">實際工作天</span>','<span style="font-size:14px;font-weight:700;color:#2e7d32">'+ncDays.toFixed(2)+'</span> / '+stdDays,{bg:'#f1f8e9'});
@@ -6032,7 +6343,7 @@ function openPaysheetEmp(empId,mi){
     }
     salH+='</table>';
     // THƯỞNG
-    salH+='<div style="background:linear-gradient(135deg,#f57f17,#ff8f00);color:white;padding:8px 14px;font-size:12px;font-weight:700;margin-top:12px"><i class="fas fa-gift"></i> THƯỞNG 獎金</div>';
+    salH+='<div style="background:linear-gradient(135deg,#f57f17,#ff8f00);color:white;padding:6px 10px;font-size:11px;font-weight:700;margin-top:8px"><i class="fas fa-gift"></i> THƯỞNG 獎金</div>';
     salH+='<table style="width:100%;border-collapse:collapse;font-size:11px;border:1px solid #e0e0e0">';
     if(bonusItems.length>0){
         bonusItems.forEach(function(b){
@@ -6040,11 +6351,11 @@ function openPaysheetEmp(empId,mi){
         });
         salH+='<tr style="background:#fff8e1"><td style="padding:8px 14px;font-weight:700;font-size:11px">Tổng thưởng <span style="font-size:9px;color:#888">獎金合計</span></td><td style="padding:8px 14px;text-align:right;font-weight:700;font-size:13px;color:#f57f17;width:40%">'+fc(totalBonus)+'</td></tr>';
     }else{
-        salH+='<tr><td colspan="2" style="padding:10px;text-align:center;color:#bbb;font-size:11px">Chưa có khoản thưởng nào 無獎金</td></tr>';
+        salH+='<tr><td colspan="2" style="padding:10px;text-align:center;color:#bbb;font-size:11px">Không có</td></tr>';
     }
     salH+='</table>';
     // PHẠT / TRỪ
-    salH+='<div style="background:linear-gradient(135deg,#b71c1c,#c62828);color:white;padding:8px 14px;font-size:12px;font-weight:700;margin-top:12px"><i class="fas fa-minus-circle"></i> PHẠT / TRỪ 扣款</div>';
+    salH+='<div style="background:linear-gradient(135deg,#b71c1c,#c62828);color:white;padding:6px 10px;font-size:11px;font-weight:700;margin-top:8px"><i class="fas fa-minus-circle"></i> PHẠT / TRỪ 扣款</div>';
     salH+='<table style="width:100%;border-collapse:collapse;font-size:11px;border:1px solid #e0e0e0">';
     if(deductItems.length>0){
         deductItems.forEach(function(d){
@@ -6052,11 +6363,11 @@ function openPaysheetEmp(empId,mi){
         });
         salH+='<tr style="background:#ffebee"><td style="padding:8px 14px;font-weight:700;font-size:11px">Tổng phạt/trừ <span style="font-size:9px;color:#888">扣款合計</span></td><td style="padding:8px 14px;text-align:right;font-weight:700;font-size:13px;color:#c62828;width:40%">- '+fc(totalDeduct)+'</td></tr>';
     }else{
-        salH+='<tr><td colspan="2" style="padding:10px;text-align:center;color:#bbb;font-size:11px">Chưa có khoản phạt/trừ nào 無扣款</td></tr>';
+        salH+='<tr><td colspan="2" style="padding:10px;text-align:center;color:#bbb;font-size:11px">Không có</td></tr>';
     }
     salH+='</table>';
     // KHOẢN KHÁC
-    salH+='<div style="background:linear-gradient(135deg,#455a64,#546e7a);color:white;padding:8px 14px;font-size:12px;font-weight:700;margin-top:12px"><i class="fas fa-exchange-alt"></i> KHOẢN KHÁC 其他項目</div>';
+    salH+='<div style="background:linear-gradient(135deg,#455a64,#546e7a);color:white;padding:6px 10px;font-size:11px;font-weight:700;margin-top:8px"><i class="fas fa-exchange-alt"></i> KHOẢN KHÁC 其他項目</div>';
     salH+='<table style="width:100%;border-collapse:collapse;font-size:11px;border:1px solid #e0e0e0">';
     if(otherItems.length>0){
         otherItems.forEach(function(o){
@@ -6070,7 +6381,7 @@ function openPaysheetEmp(empId,mi){
     }
     salH+='</table>';
     // TỔNG KẾT
-    salH+='<div style="background:linear-gradient(135deg,#0d47a1,#1565c0);color:white;padding:8px 14px;font-size:12px;font-weight:700;margin-top:12px"><i class="fas fa-calculator"></i> TỔNG KẾT 合計</div>';
+    salH+='<div style="background:linear-gradient(135deg,#0d47a1,#1565c0);color:white;padding:6px 10px;font-size:11px;font-weight:700;margin-top:8px"><i class="fas fa-calculator"></i> TỔNG KẾT 合計</div>';
     salH+='<table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid #e0e0e0">';
     salH+='<tr style="border-bottom:1px solid #eee"><td style="padding:8px 14px;font-size:11px">Tiền công <span style="font-size:9px;color:#888">工資</span></td><td style="padding:8px 14px;text-align:right;font-size:11px;width:40%">'+fc(sb)+'</td></tr>';
     if(isFT)salH+='<tr style="border-bottom:1px solid #eee"><td style="padding:8px 14px;font-size:11px">Tăng ca <span style="font-size:9px;color:#888">加班費</span></td><td style="padding:8px 14px;text-align:right;font-size:11px;color:#e65100;width:40%">'+fc(otPay)+'</td></tr>';
@@ -6078,11 +6389,18 @@ function openPaysheetEmp(empId,mi){
     salH+='<tr style="border-bottom:1px solid #eee"><td style="padding:8px 14px;font-size:11px">Thưởng <span style="font-size:9px;color:#888">獎金</span></td><td style="padding:8px 14px;text-align:right;font-size:11px;color:#2e7d32;width:40%">'+fc(totalBonus)+'</td></tr>';
     salH+='<tr style="border-bottom:1px solid #eee"><td style="padding:8px 14px;font-size:11px">Phạt/Trừ <span style="font-size:9px;color:#888">扣款</span></td><td style="padding:8px 14px;text-align:right;font-size:11px;color:#c62828;width:40%">- '+fc(totalDeduct)+'</td></tr>';
     if(totalOther!==0)salH+='<tr style="border-bottom:1px solid #eee"><td style="padding:8px 14px;font-size:11px">Khoản khác <span style="font-size:9px;color:#888">其他</span></td><td style="padding:8px 14px;text-align:right;font-size:11px;color:#455a64;width:40%">'+fc(totalOther)+'</td></tr>';
-    salH+='<tr style="background:linear-gradient(135deg,#e8f5e9,#c8e6c9)"><td style="padding:12px 14px;font-weight:700;font-size:15px;color:#1b5e20"><i class="fas fa-hand-holding-usd"></i> THỰC LĨNH 實領</td>';
-    salH+='<td style="padding:12px 14px;text-align:right;font-weight:700;font-size:20px;color:#1b5e20;width:40%">'+fc(netPay)+'</td></tr>';
+    salH+='<tr style="background:linear-gradient(135deg,#e8f5e9,#c8e6c9)"><td style="padding:8px 10px;font-weight:700;font-size:14px;color:#1b5e20"><i class="fas fa-hand-holding-usd"></i> THỰC LĨNH 實領</td>';
+    salH+='<td style="padding:8px 10px;text-align:right;font-weight:700;font-size:18px;color:#1b5e20;width:35%">'+fc(netPay)+'</td></tr>';
     salH+='</table>';
     if(ovr.note){salH+='<div style="margin-top:8px;padding:8px 12px;background:#f5f5f5;border-radius:6px;font-size:10px;color:#666;font-style:italic"><i class="fas fa-sticky-note"></i> '+ovr.note+'</div>';}
     salH+=crossSalH;
+    if(_isCrossK||_isCrossS){
+        salH+='<div style="margin-top:12px;background:linear-gradient(135deg,#b71c1c,#d32f2f);color:white;padding:10px 14px;border-radius:8px;text-align:center">';
+        salH+='<div style="font-size:11px;opacity:0.9;margin-bottom:4px">TỔNG LĨNH (Tất cả vị trí) 總計（所有崗位）</div>';
+        salH+='<div style="font-size:10px;opacity:0.8;margin-bottom:2px">'+emp.dept+': '+fc(netPay)+' + Hỗ trợ: '+fc(_cNetPay)+'</div>';
+        salH+='<div style="font-size:22px;font-weight:700">'+fc(netPay+_cNetPay)+'</div>';
+        salH+='</div>';
+    }
     salH+='</div>';
         // ========== ASSEMBLE POPUP ==========
     var h='<div>';
@@ -6122,12 +6440,58 @@ function downloadScheduleImage(){
     }else{doScheduleCapture(el);}
 }
 function doScheduleCapture(el){
-    showSuccess('Đang chụp ảnh...');
-    html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:true}).then(function(canvas){
+    showSuccess('Đang chụp ảnh 擷取中...');
+    // Clone element and append task legend at bottom
+    var clone=el.cloneNode(true);
+    clone.style.position='absolute';clone.style.left='-9999px';clone.style.top='0';
+    clone.style.width=Math.max(el.scrollWidth,el.offsetWidth)+'px';
+    clone.style.overflow='visible';clone.style.maxHeight='none';
+    clone.querySelectorAll('*').forEach(function(n){if(n.style){n.style.overflow='visible';n.style.maxHeight='none';}});
+    // Build task legend HTML
+    var tasks=schedDeptView==='kitchen'?TASK_LIST_K:TASK_LIST_SV;
+    if(tasks&&tasks.length>0){
+        var legendDiv=document.createElement('div');
+        legendDiv.style.cssText='background:#f8f9fa;border:1px solid #e0e0e0;border-radius:6px;padding:8px 12px;margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center';
+        var legendLabel=document.createElement('span');
+        legendLabel.style.cssText='font-size:11px;font-weight:700;color:#455a64;margin-right:4px';
+        legendLabel.innerHTML='<i class="fas fa-tasks"></i> Chú thích 備註:';
+        legendDiv.appendChild(legendLabel);
+        tasks.forEach(function(t){
+            var span=document.createElement('span');
+            span.style.cssText='display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;background:'+t.color+'20;color:'+t.color+';border:1px solid '+t.color;
+            span.innerHTML='<i class="fas '+t.icon+'" style="font-size:10px"></i> '+t.name;
+            legendDiv.appendChild(span);
+        });
+        // Also add shift color legend
+        var usedColors={};
+        var pins=schedDeptView==='kitchen'?pinnedShiftsK:pinnedShiftsSV;
+        pins.forEach(function(sh){
+            var colorKey=sh.s+'-'+sh.e;
+            var c=shiftColors[colorKey];
+            if(c)usedColors[sh.l]={color:c,time:colorKey};
+        });
+        var colorKeys=Object.keys(usedColors);
+        if(colorKeys.length>0){
+            var sep=document.createElement('span');
+            sep.style.cssText='border-left:1px solid #ccc;height:16px;margin:0 4px';
+            legendDiv.appendChild(sep);
+            colorKeys.forEach(function(label){
+                var info=usedColors[label];
+                var span=document.createElement('span');
+                span.style.cssText='display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:600;background:'+info.color+'30;color:#333;border:1px solid '+info.color;
+                span.innerHTML='<span style="display:inline-block;width:10px;height:10px;background:'+info.color+';border-radius:50%"></span> '+label;
+                legendDiv.appendChild(span);
+            });
+        }
+        clone.appendChild(legendDiv);
+    }
+    document.body.appendChild(clone);
+    html2canvas(clone,{scale:2,backgroundColor:'#ffffff',useCORS:true,scrollY:0,scrollX:0,windowWidth:clone.scrollWidth+40}).then(function(canvas){
+        document.body.removeChild(clone);
         canvas.toBlob(function(blob){
             if(navigator.clipboard&&navigator.clipboard.write){
                 navigator.clipboard.write([new ClipboardItem({'image/png':blob})]).then(function(){
-                    showSuccess('Đã copy ảnh lịch làm!');
+                    showSuccess('Đã copy ảnh 已複製圖片');
                     // Also download
                     var link=document.createElement('a');
                     link.download='lich-lam-'+schedDeptView+'-'+(document.getElementById('scheduleMonth').value||document.getElementById('scheduleWeek').value)+'.png';
@@ -6138,14 +6502,14 @@ function doScheduleCapture(el){
                     link.download='lich-lam.png';
                     link.href=canvas.toDataURL('image/png');
                     link.click();
-                    showSuccess('Đã tải ảnh!');
+                    showSuccess('Đã tải ảnh! 已下載圖片');
                 });
             }else{
                 var link=document.createElement('a');
                 link.download='lich-lam.png';
                 link.href=canvas.toDataURL('image/png');
                 link.click();
-                showSuccess('Đã tải ảnh!');
+                showSuccess('Đã tải ảnh! 已下載圖片');
             }
         },'image/png');
     });
@@ -6175,7 +6539,7 @@ function doCopyCapture(el){
         canvas.toBlob(function(blob){
             if(navigator.clipboard&&navigator.clipboard.write){
                 navigator.clipboard.write([new ClipboardItem({'image/png':blob})]).then(function(){
-                    showSuccess('Đã copy ảnh!');
+                    showSuccess('Đã copy ảnh! 已複製圖片');
                 }).catch(function(){
                     fallbackDownload(canvas);
                 });
@@ -6190,7 +6554,7 @@ function fallbackDownload(canvas){
     link.download='bang-luong.png';
     link.href=canvas.toDataURL('image/png');
     link.click();
-    showSuccess('Đã tải ảnh!');
+    showSuccess('Đã tải ảnh! 已下載圖片');
 }
 function downloadPaysheetEmpImage(){
     var el=document.getElementById('psAttCapture');if(document.getElementById('psEmpSalTab').style.display!=='none')el=document.getElementById('psSalCapture');if(!el)return;
@@ -6201,51 +6565,49 @@ function downloadPaysheetEmpImage(){
         document.head.appendChild(s);
     }else{doDownloadCapture(el);}
 }
-function copyBothPaysheetImage(){
+function downloadBothPaysheetImages(){
     var att=document.getElementById('psAttCapture');
     var sal=document.getElementById('psSalCapture');
     if(!att||!sal)return;
-    // Show both tabs temporarily
     var attTab=document.getElementById('psEmpAttTab');
     var salTab=document.getElementById('psEmpSalTab');
     var attWas=attTab.style.display;
     var salWas=salTab.style.display;
     attTab.style.display='block';
     salTab.style.display='block';
-    // Create temp wrapper
-    var wrapper=document.createElement('div');
-    var ww=Math.max(att.scrollWidth,att.offsetWidth,sal.scrollWidth,sal.offsetWidth);
-    wrapper.style.cssText='position:absolute;left:-9999px;top:0;background:white;padding:12px;width:'+ww+'px;overflow:visible';
-    // Clone both
-    var attClone=att.cloneNode(true);
-    attClone.style.overflow='visible';attClone.querySelectorAll('*').forEach(function(n){if(n.style){n.style.overflow='visible';n.style.maxHeight='none';}});
-    var divider=document.createElement('div');
-    divider.style.cssText='height:2px;background:#e0e0e0;margin:16px 0';
-    var salClone=sal.cloneNode(true);
-    salClone.style.overflow='visible';salClone.querySelectorAll('*').forEach(function(n){if(n.style){n.style.overflow='visible';n.style.maxHeight='none';}});
-    wrapper.appendChild(attClone);
-    wrapper.appendChild(divider);
-    wrapper.appendChild(salClone);
-    document.body.appendChild(wrapper);
-    // Restore tabs
-    attTab.style.display=attWas;
-    salTab.style.display=salWas;
+    var mi=document.getElementById('payrollMonth')?document.getElementById('payrollMonth').value:'';
+    var empName=(window._prCtx&&window._prCtx.empId)||'';
     function doCapture(){
-        html2canvas(wrapper,{scale:3,backgroundColor:'#ffffff',windowWidth:wrapper.scrollWidth+40}).then(function(canvas){
-            document.body.removeChild(wrapper);
-            canvas.toBlob(function(blob){
-                if(navigator.clipboard&&navigator.clipboard.write){
-                    navigator.clipboard.write([new ClipboardItem({'image/png':blob})]).then(function(){
-                        showSuccess('Đã copy ảnh chấm công + lương!');
-                    }).catch(function(){
-                        var link=document.createElement('a');link.download='bang-luong-full.png';link.href=canvas.toDataURL('image/png');link.click();
-                        showSuccess('Đã tải ảnh!');
-                    });
-                }else{
-                    var link=document.createElement('a');link.download='bang-luong-full.png';link.href=canvas.toDataURL('image/png');link.click();
-                    showSuccess('Đã tải ảnh!');
-                }
-            },'image/png');
+        showSuccess('Đang chụp ảnh... 擷取中...');
+        var cloneAtt=_prepCaptureClone(att);
+        var cloneSal=_prepCaptureClone(sal);
+        var maxW=Math.max(cloneAtt.scrollWidth,cloneSal.scrollWidth)+40;
+        Promise.all([
+            html2canvas(cloneAtt,{scale:3,backgroundColor:'#ffffff',scrollY:0,scrollX:0,windowWidth:maxW}),
+            html2canvas(cloneSal,{scale:3,backgroundColor:'#ffffff',scrollY:0,scrollX:0,windowWidth:maxW})
+        ]).then(function(canvases){
+            document.body.removeChild(cloneAtt);
+            document.body.removeChild(cloneSal);
+            attTab.style.display=attWas;
+            salTab.style.display=salWas;
+            var c1=canvases[0],c2=canvases[1];
+            var gap=30;
+            var combined=document.createElement('canvas');
+            combined.width=Math.max(c1.width,c2.width);
+            combined.height=c1.height+gap+c2.height;
+            var ctx=combined.getContext('2d');
+            ctx.fillStyle='#ffffff';ctx.fillRect(0,0,combined.width,combined.height);
+            ctx.drawImage(c1,0,0);
+            // Draw separator line
+            ctx.strokeStyle='#ccc';ctx.lineWidth=2;
+            ctx.setLineDash([8,4]);
+            ctx.beginPath();ctx.moveTo(20,c1.height+gap/2);ctx.lineTo(combined.width-20,c1.height+gap/2);ctx.stroke();
+            ctx.drawImage(c2,0,c1.height+gap);
+            var link=document.createElement('a');
+            link.download='bang-luong-'+empName+'-'+mi+'.png';
+            link.href=combined.toDataURL('image/png');
+            link.click();
+            showSuccess('Đã tải ảnh chấm công + lương! 已下載考勤+薪資圖片');
         });
     }
     if(typeof html2canvas==='undefined'){
@@ -6265,7 +6627,7 @@ function doDownloadCapture(el){
         link.download='bang-luong-'+mi+'.png';
         link.href=canvas.toDataURL('image/png');
         link.click();
-        showSuccess('Đã tải ảnh!');
+        showSuccess('Đã tải ảnh! 已下載圖片');
     });
 }
 function exportCashList(){
@@ -6347,7 +6709,7 @@ function downloadPaysheetFile(){
     a.href='data:text/csv;charset=utf-8,﻿'+encodeURIComponent(csv);
     a.download='bang-luong-'+mi+'.csv';
     a.click();
-    showSuccess('Đã tải file!');
+    showSuccess('Đã tải file! 已下載檔案');
 }
 function switchPRTab(tab,btn){
     document.querySelectorAll('.pr-tab-content').forEach(function(el){el.style.display='none';});
@@ -6382,8 +6744,22 @@ function capturePaysheet(el,type){
         link.download='bang-luong-'+type.toUpperCase()+'-'+mi+'.png';
         link.href=canvas.toDataURL('image/png');
         link.click();
-        showSuccess('Đã xuất ảnh!');
+        showSuccess('Đã xuất ảnh! 已匯出圖片');
     }).catch(function(err){alert('Lỗi xuất ảnh: '+err);});
+}
+function isInProbPeriod(emp,mi){
+    if(!emp.probPeriod||!emp.startDate)return false;
+    var pp=emp.probPeriod.toString().toLowerCase();
+    var months=0;
+    var m1=pp.match(/(\d+)\s*(tháng|month|m)/i);
+    if(m1)months=parseInt(m1[1]);
+    else{var m2=pp.match(/(\d+)/);if(m2)months=parseInt(m2[1]);}
+    if(months<=0)return false;
+    var sp=emp.startDate.split('/');if(sp.length<3)return false;
+    var sd=new Date(parseInt(sp[2]),parseInt(sp[1])-1,parseInt(sp[0]));
+    var probEnd=new Date(sd);probEnd.setMonth(probEnd.getMonth()+months);
+    var mp=mi.split('-');var checkDate=new Date(parseInt(mp[0]),parseInt(mp[1])-1,1);
+    return checkDate<probEnd;
 }
 function isInProbation(emp,mi){
     if(!emp.probPeriod||!emp.startDate)return false;
@@ -6550,11 +6926,11 @@ function buildPayrollFT(title,emps,mi,y,m){
         h+='<td style="padding:4px;border:1px solid #eee;font-weight:600;font-size:12px'+(isCrossDeptRow?';background:#fff3e0':'')+'">'+emp.name+crossBadge+'<br><span style="font-size:9px;color:var(--primary)">'+emp.nameCN+'</span></td>';
         h+='<td style="padding:4px;border:1px solid #eee;font-size:10px">'+emp.position+'</td>';
         h+='<td style="padding:4px;border:1px solid #eee;font-size:10px">'+emp.startDate+'</td>';
-        h+='<td style="padding:4px;border:1px solid #eee;text-align:right;font-size:10px'+(isCrossDeptRow?';cursor:pointer;text-decoration:underline dashed':'')+'"'+(isCrossDeptRow?' onclick="event.stopPropagation();setCrossDeptRate(\''+emp.id+'\',\''+mi+'\',\''+emp._crossDept+'\')" title="Click để chỉnh mức lương hỗ trợ"':'')+'">'+formatCurrency(baseSal)+'</td>';
-        h+='<td style="padding:4px;border:1px solid #eee;text-align:right;font-size:10px">'+formatCurrency(emp.responsibility||0)+'</td>';
-        h+='<td style="padding:4px;border:1px solid #eee;text-align:right;font-size:10px">'+formatCurrency(emp.attendance||0)+'</td>';
+        h+='<td style="padding:4px;border:1px solid #eee;text-align:right;font-size:10px'+(isCrossDeptRow?';cursor:pointer;text-decoration:underline dashed':'')+'"'+(isCrossDeptRow?' onclick="event.stopPropagation();setCrossDeptRate(\''+emp.id+'\',\''+mi+'\',\''+emp._crossDept+'\')" title="Click để chỉnh mức lương hỗ trợ"':'')+'">'+(isInProbation(emp,mi)?'<span style="color:#e65100;font-weight:700">':'')+formatCurrency(baseSal)+(isInProbation(emp,mi)?'</span><br><span style="font-size:7px;color:#e65100">(TV 試用)</span>':'')+'</td>';
+        h+='<td style="padding:4px;border:1px solid #eee;text-align:right;font-size:10px">'+formatCurrency(respSal)+'</td>';
+        h+='<td style="padding:4px;border:1px solid #eee;text-align:right;font-size:10px">'+formatCurrency(attSal)+'</td>';
         h+='<td style="padding:4px;border:1px solid #eee;text-align:right;font-size:10px">'+formatCurrency(ovr.otherAllowance||0)+'</td>';
-        h+='<td style="padding:4px;border:1px solid #eee;text-align:right;font-weight:600;font-size:10px;background:#e3f2fd">'+formatCurrency(ts)+'</td>';
+        h+='<td style="padding:4px;border:1px solid #eee;text-align:right;font-weight:600;font-size:10px;background:'+(isInProbation(emp,mi)?'#fff3e0':'#e3f2fd')+'">'+formatCurrency(ts)+'</td>';
         h+='<td style="padding:4px;border:1px solid #eee;text-align:center;font-weight:700;font-size:11px;background:'+(isCrossDeptRow?'#fff3e0':'#e8f5e9')+'">'+ncDays.toFixed(2)+'</td>';
         h+='<td style="padding:4px;border:1px solid #eee;text-align:right;font-size:10px">'+formatCurrency(Math.round(sb))+'</td>';
         h+='<td style="padding:4px;border:1px solid #eee;text-align:center;font-size:10px;color:'+(pd.ot>0?'#e65100':'#ccc')+'">'+(pd.ot>0?pd.ot.toFixed(1):'-')+'</td>';
@@ -6720,9 +7096,9 @@ function addBPT(type){
     var aEl=document.getElementById(type==='bonus'?'bpNBA':'bpNPA');
     var name=nEl.value.trim();if(!name){alert('Nhập tên!');nEl.focus();return;}
     bpTemplates.push({type:type,name:name,amount:parseInt(aEl.value)||0});
-    nEl.value='';aEl.value='0';saveData();loadBPTemplates();showSuccess('Đã thêm!');
+    nEl.value='';aEl.value='0';saveData();loadBPTemplates();showSuccess('Đã thêm! 已新增');
 }
-function removeBPT(idx){bpTemplates.splice(idx,1);saveData();loadBPTemplates();showSuccess('Đã xóa!');}
+function removeBPT(idx){bpTemplates.splice(idx,1);saveData();loadBPTemplates();showSuccess('Đã xóa! 已刪除');}
 function editBPT(idx){
     var t=bpTemplates[idx];if(!t)return;
     var items=document.querySelectorAll('.bpt-item[data-gi="'+idx+'"]');
@@ -6745,7 +7121,7 @@ function saveBPTEdit(idx){
     if(!name){alert('Nhập tên!');return;}
     bpTemplates[idx].name=name;
     bpTemplates[idx].amount=amt;
-    saveData();loadBPTemplates();showSuccess('Đã cập nhật!');
+    saveData();loadBPTemplates();showSuccess('Đã cập nhật! 已更新');
 }
 function loadHolidaySettings(){
     var mi=document.getElementById('payrollMonth').value;
@@ -6803,11 +7179,11 @@ function addHoliday(){
     if(!name){alert('Nhập tên ngày lễ!');return;}
     holidays.push({d:d,name:name,mul:mul});
     holidays.sort(function(a,b){return a.d.localeCompare(b.d);});
-    saveData();loadHolidaySettings();loadPayroll();showSuccess('Đã thêm ngày lễ');
+    saveData();loadHolidaySettings();loadPayroll();showSuccess('Đã thêm ngày lễ 已新增假日');
 }
 function removeHoliday(idx){
     holidays.splice(idx,1);
-    saveData();loadHolidaySettings();loadPayroll();showSuccess('Đã xóa');
+    saveData();loadHolidaySettings();loadPayroll();showSuccess('Đã xóa 已刪除');
 }
 function editHoliday(idx){
     var rows=document.querySelectorAll('.hol-row[data-hol-idx="'+idx+'"]');
@@ -6826,7 +7202,7 @@ function saveHolEdit(idx){
     var m=parseInt(document.getElementById('holEditM').value);
     if(!d||!n){alert('Nhập đủ thông tin!');return;}
     holidays[idx]={d:d,name:n,mul:m};
-    saveData();loadHolidaySettings();loadPayroll();showSuccess('Đã cập nhật!');
+    saveData();loadHolidaySettings();loadPayroll();showSuccess('Đã cập nhật! 已更新');
 }
 function addExtraHoliday(mKey){
     var dateEl=document.getElementById('newExDate');
@@ -6840,11 +7216,11 @@ function addExtraHoliday(mKey){
     if(!holidaysExtra[mKey])holidaysExtra[mKey]=[];
     holidaysExtra[mKey].push({day:day,name:name,mul:mul});
     holidaysExtra[mKey].sort(function(a,b){return a.day-b.day;});
-    saveData();loadHolidaySettings();loadPayroll();showSuccess('Đã thêm');
+    saveData();loadHolidaySettings();loadPayroll();showSuccess('Đã thêm 已新增');
 }
 function removeExtraHoliday(mKey,idx){
     holidaysExtra[mKey].splice(idx,1);
-    saveData();loadHolidaySettings();loadPayroll();showSuccess('Đã xóa');
+    saveData();loadHolidaySettings();loadPayroll();showSuccess('Đã xóa 已刪除');
 }
 function editExtraHoliday(mKey,idx){
     var rows=document.querySelectorAll('.exhol-row[data-ex-idx="'+idx+'"]');
@@ -6863,7 +7239,7 @@ function saveExHolEdit(mKey,idx){
     var m=parseInt(document.getElementById('exHolEditM').value);
     if(!d||!n){alert('Nhập đủ thông tin!');return;}
     holidaysExtra[mKey][idx]={day:d,name:n,mul:m};
-    saveData();loadHolidaySettings();loadPayroll();showSuccess('Đã cập nhật!');
+    saveData();loadHolidaySettings();loadPayroll();showSuccess('Đã cập nhật! 已更新');
 }
 function getHolidayMultiplier(dateStr){
     // dateStr = YYYY-MM-DD
@@ -6981,7 +7357,7 @@ function openPayrollDetail(empId,mi,crossDeptTarget){
     }
     h+='</table>';
     // NGÀY CÔNG & TIỀN CÔNG
-    h+='<div style="background:linear-gradient(135deg,#1b5e20,#2e7d32);color:white;padding:8px 14px;font-size:12px;font-weight:700;margin-top:12px"><i class="fas fa-calendar-check"></i> NGÀY CÔNG & TIỀN CÔNG</div>';
+    h+='<div style="background:linear-gradient(135deg,#1b5e20,#2e7d32);color:white;padding:6px 10px;font-size:11px;font-weight:700;margin-top:8px"><i class="fas fa-calendar-check"></i> NGÀY CÔNG & TIỀN CÔNG</div>';
     h+='<table style="width:100%;border-collapse:collapse;font-size:11px;border:1px solid #e0e0e0">';
     if(isFT){
         mkRow('Ngày công thực tế <span style="font-size:9px;color:#888">實工</span>','<span style="font-size:14px;font-weight:700;color:#2e7d32">'+ncDays.toFixed(2)+'</span> / '+stdDays,{bg:'#f1f8e9'});
@@ -7012,7 +7388,7 @@ function openPayrollDetail(empId,mi,crossDeptTarget){
     h+='<div style="display:flex;gap:4px;align-items:center">';
     var bTpls=bpTemplates.filter(function(t){return t.type==="bonus";});
     if(bTpls.length>0){
-        h+='<select id="bpBonusSel" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);padding:2px 6px;border-radius:8px;font-size:9px;cursor:pointer"><option value="">-- Chọn mẫu --</option>';
+        h+='<select id="bpBonusSel" onchange="if(this.value)addBDFromTpl(&apos;bonus&apos;)" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);padding:2px 6px;border-radius:8px;font-size:9px;cursor:pointer"><option value="">-- Chọn mẫu --</option>';
         bTpls.forEach(function(t,i){h+='<option value="'+i+'" style="color:#333">'+t.name+' ('+formatCurrency(t.amount)+')</option>';});
         h+='</select>';
         h+='<button onclick="addBDFromTpl(\'bonus\')" style="background:rgba(255,255,255,0.25);color:white;border:none;padding:3px 8px;border-radius:12px;font-size:9px;cursor:pointer"><i class="fas fa-check"></i></button>';
@@ -7033,7 +7409,7 @@ function openPayrollDetail(empId,mi,crossDeptTarget){
     h+='<div style="display:flex;gap:4px;align-items:center">';
     var pTpls=bpTemplates.filter(function(t){return t.type==="penalty";});
     if(pTpls.length>0){
-        h+='<select id="bpDeductSel" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);padding:2px 6px;border-radius:8px;font-size:9px;cursor:pointer"><option value="">-- Chọn mẫu --</option>';
+        h+='<select id="bpDeductSel" onchange="if(this.value)addBDFromTpl(&apos;deduct&apos;)" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);padding:2px 6px;border-radius:8px;font-size:9px;cursor:pointer"><option value="">-- Chọn mẫu --</option>';
         pTpls.forEach(function(t,i){h+='<option value="'+i+'" style="color:#333">'+t.name+' ('+formatCurrency(t.amount)+')</option>';});
         h+='</select>';
         h+='<button onclick="addBDFromTpl(\'deduct\')" style="background:rgba(255,255,255,0.25);color:white;border:none;padding:3px 8px;border-radius:12px;font-size:9px;cursor:pointer"><i class="fas fa-check"></i></button>';
@@ -7062,7 +7438,7 @@ function openPayrollDetail(empId,mi,crossDeptTarget){
     h+='</div>';
     h+='<div style="background:#eceff1;padding:6px 14px;text-align:right;font-weight:700;font-size:11px;border:1px solid #e0e0e0;border-top:none">Tổng khác: <span style="color:#455a64;font-size:13px" id="totalOtherDisp">'+fc(totalOther)+'</span></div>';
     // TỔNG KẾT
-    h+='<div style="background:linear-gradient(135deg,#0d47a1,#1565c0);color:white;padding:8px 14px;font-size:12px;font-weight:700;margin-top:12px"><i class="fas fa-calculator"></i> TỔNG KẾT 合計</div>';
+    h+='<div style="background:linear-gradient(135deg,#0d47a1,#1565c0);color:white;padding:6px 10px;font-size:11px;font-weight:700;margin-top:8px"><i class="fas fa-calculator"></i> TỔNG KẾT 合計</div>';
     h+='<table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid #e0e0e0">';
     h+='<tr style="background:linear-gradient(135deg,#e8f5e9,#c8e6c9)"><td style="padding:10px 14px;font-weight:700;font-size:14px;color:#1b5e20"><i class="fas fa-hand-holding-usd"></i> THỰC LĨNH 實領 <span style="font-size:10px;color:#388e3c">實領</span></td>';
     h+='<td style="padding:10px 14px;text-align:right;font-weight:700;font-size:18px;color:#1b5e20;width:40%" id="prNetPay">'+fc(netPay)+'</td></tr>';
@@ -7115,6 +7491,7 @@ function addBDFromTpl(type){
     d.innerHTML=bdRowHtml(type,{note:tpl.name,amount:tpl.amount},idx);
     c.appendChild(d.firstChild);
     sel.value='';
+    recalcBDTotal(type);
 }
 function removeBDRow(btn,type){
     btn.parentElement.remove();
@@ -7205,14 +7582,14 @@ function savePayrollDetail2(){
     var oa=document.getElementById('prOtherAllowance');if(oa)ovr.otherAllowance=parseInt(oa.getAttribute('data-raw'))||parseInt(oa.value.replace(/\./g,''))||0;
     ovr.note=document.getElementById('prNote').value;
     payrollOverrides[pk]=ovr;
-    saveData();closeModal('payrollDetailModal');loadPayroll();showSuccess('Đã lưu!');
+    saveData();closeModal('payrollDetailModal');loadPayroll();showSuccess('Đã lưu! 已儲存');
 }
 function checkWE(my,eid){var parts=my.split('-'),d=new Date(parts[0],parts[1],0).getDate(),we=[];for(var i=1;i<=d;i++){var dw=new Date(parts[0],parts[1]-1,i).getDay();if(dw===0||dw===6)we.push(i);}return we.every(function(day){var k=my+'-'+String(day).padStart(2,'0')+'-'+eid;var v=attendanceData[k];return v&&!['X','KP','ĐX','DX','P'].includes((v||'').toUpperCase());});}
 
 function copyCombinedImage(){
     var attEl=document.querySelector('#attendance .tab-content-inner')||document.getElementById('attendanceContent');
     var salEl=document.getElementById('prSalaryFT').style.display!=='none'?document.getElementById('prSalaryFT'):document.getElementById('prSalaryPT');
-    if(!salEl||!salEl.innerHTML){showSuccess('Chưa có dữ liệu lương!');return;}
+    if(!salEl||!salEl.innerHTML){showSuccess('Chưa có dữ liệu lương! 尚無薪資數據');return;}
     // Create combined container
     var wrap=document.createElement('div');
     wrap.style.cssText='position:absolute;left:-9999px;top:0;background:white;padding:16px;width:1200px';
@@ -7249,10 +7626,10 @@ function doCombinedCapture(el){
                 link.download='chamcong-luong.png';
                 link.href=canvas.toDataURL('image/png');
                 link.click();
-                showSuccess('Đã tải ảnh!');
+                showSuccess('Đã tải ảnh! 已下載圖片');
             }
         });
-    }).catch(function(e){document.body.removeChild(el);showSuccess('Lỗi: '+e.message);});
+    }).catch(function(e){document.body.removeChild(el);showSuccess('Lỗi 錯誤: '+e.message);});
 }
 function exportPayroll(){
     var mi=document.getElementById('payrollMonth').value;if(!mi)return;
@@ -7282,7 +7659,7 @@ function exportPayroll(){
         });
     }
     downloadCSV(c,'luong-'+mi+'.csv');
-    showSuccess('Đã xuất CSV!');
+    showSuccess('Đã xuất CSV! 已匯出');
 }
 
 function formatCurrency(n){if(!n)return'0';return new Intl.NumberFormat('vi-VN').format(Math.round(n));}
@@ -7446,11 +7823,11 @@ function importChamCong(){
     var mi=document.getElementById('attendanceMonth').value;
     if(!mi){alert('Vui lòng chọn tháng trước!');return;}
     if(!confirm('Tải dữ liệu chấm công từ Google Sheets cho tháng '+mi+'?'))return;
-    showSuccess('Đang tải từ Google Sheets...');
+    showSuccess('Đang tải từ Google Sheets 載入中...');
     var url=CC_API_URL+'?action=all&month='+encodeURIComponent(mi);
     fetch(url,{redirect:'follow'}).then(function(r){return r.json();}).then(function(data){
         if(!data.success){alert('Lỗi: '+data.message);return;}
-        if(!data.records||!data.records.length){showSuccess('Không có dữ liệu chấm công tháng '+mi);return;}
+        if(!data.records||!data.records.length){showSuccess('Không có dữ liệu tháng 無數據 '+mi);return;}
         var count=0,skip=0;
         data.records.forEach(function(r){
             if(!r.empId||!r.date)return;
@@ -7469,7 +7846,7 @@ function importChamCong(){
             count++;
         });
         loadAttendance();saveData();
-        showSuccess('Import '+count+' ô từ Google Sheets'+(skip?' (bỏ qua '+skip+' ô đã có)':''));
+        showSuccess('Import 匯入 '+count+' ô'+(skip?' (bỏ qua '+skip+' ô đã có)':''));
     }).catch(function(err){
         alert('Lỗi kết nối Google Sheets: '+err.message);
     });
@@ -7496,7 +7873,7 @@ function processChamCongImport(ev){
                 attendanceNotes[k]='[App] '+r.checkin+'-'+r.checkout+' ('+r.hours.toFixed(1)+'h)';
                 count++;
             });
-            loadAttendance();showSuccess('Import '+count+' ô'+(skip?' (bỏ qua '+skip+' ô đã có)':''));
+            loadAttendance();showSuccess('Import 匯入 '+count+' ô'+(skip?' (bỏ qua '+skip+')':''));
         }catch(err){alert('Lỗi đọc file: '+err.message);}
     };
     reader.readAsText(file);ev.target.value='';
@@ -7509,22 +7886,36 @@ function portalApiCall(params, callback) {
         alert('Chưa cấu hình API URL cho portal nhân viên!\nVào code, tìm empPortalConfig.apiUrl và điền URL deploy.');
         return;
     }
-    var url = empPortalConfig.apiUrl + '?' + Object.keys(params).map(function(k) {
+    var qs = Object.keys(params).map(function(k) {
         return encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
     }).join('&');
-    
-    var script = document.createElement('script');
-    // Use fetch instead since Apps Script returns JSON with CORS
-    fetch(url).then(function(r) { return r.json(); }).then(function(data) {
-        callback(data);
-    }).catch(function(err) {
-        console.warn('Portal sync error:', err.message);
-    });
+    var url = empPortalConfig.apiUrl;
+    var fullUrl = url + '?' + qs;
+    var _done = false;
+    function _cb(data){ if(_done)return; _done=true; callback(data); }
+    var timer = setTimeout(function(){ _cb({success:false,error:'Timeout 90s - kiểm tra mạng'}); }, 90000);
+    function _fetch(fetchUrl, opts) {
+        fetch(fetchUrl, opts).then(function(r) { return r.text(); }).then(function(txt) {
+            clearTimeout(timer);
+            try { _cb(JSON.parse(txt)); }
+            catch(e) { console.warn('Portal parse error:', txt.substring(0,300)); _cb({success:false,error:'Lỗi phản hồi server'}); }
+        }).catch(function(err) {
+            clearTimeout(timer);
+            console.warn('Portal error:', err.message);
+            _cb({success:false,error:'Lỗi kết nối: '+err.message});
+        });
+    }
+    // Use POST for large payloads (>1500 chars query string), else GET
+    if (qs.length > 1500) {
+        _fetch(url, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:qs, redirect:'follow'});
+    } else {
+        _fetch(fullUrl, {redirect:'follow'});
+    }
 }
 
 function bossSyncEmployees() {
     if (!empPortalConfig.apiUrl) {
-        alert('Chưa cấu hình empPortalConfig.apiUrl!');
+        alert('Chưa cấu hình API! 尚未設定API');
         return;
     }
     if (!confirm('Đồng bộ danh sách ' + employees.length + ' nhân viên lên portal?')) return;
@@ -7550,13 +7941,13 @@ function bossSyncEmployees() {
 
 function bossPublishSchedule() {
     if (!empPortalConfig.apiUrl) {
-        alert('Chưa cấu hình empPortalConfig.apiUrl!');
+        alert('Chưa cấu hình API! 尚未設定API');
         return;
     }
     // Gather current week schedule data
     var weekInput = document.getElementById('scheduleWeek');
     var weekVal = weekInput ? weekInput.value : '';
-    if (!weekVal) { alert('Vui lòng chọn tuần trước!'); return; }
+    if (!weekVal) { alert('Vui lòng chọn tuần trước! 請先選擇週次'); return; }
     
     // Collect schedule data from schedules object
     var data = [];
@@ -7580,7 +7971,7 @@ function bossPublishSchedule() {
     }
     
     if (data.length === 0) {
-        alert('Không có dữ liệu lịch làm tuần này để phát!');
+        alert('Không có dữ liệu lịch làm tuần này! 本週無排班數據');
         return;
     }
     
@@ -7602,14 +7993,153 @@ function bossPublishSchedule() {
     });
 }
 
+function openPublishScheduleModal(){
+    if(!empPortalConfig.apiUrl){alert('Chưa cấu hình empPortalConfig.apiUrl! 尚未設定API');return;}
+    var today=new Date();var dow=today.getDay();
+    var mon=new Date(today);mon.setDate(today.getDate()-(dow===0?6:dow-1));
+    var sun=new Date(mon);sun.setDate(mon.getDate()+6);
+    document.getElementById('pubFromDate').value=fmtISO(mon);
+    document.getElementById('pubToDate').value=fmtISO(sun);
+    // Populate employee checkboxes
+    var listEl=document.getElementById('pubEmpList');
+    var h='';
+    var depts={};
+    employees.forEach(function(emp){if(emp.endDate)return;var d=emp.dept||'Khác';if(!depts[d])depts[d]=[];depts[d].push(emp);});
+    ['Bếp','Phục vụ','Rửa chén','Khác'].forEach(function(dept){
+        if(!depts[dept]||depts[dept].length===0)return;
+        h+='<div class="pub-emp-group" data-dept="'+dept+'">';
+        h+='<div style="font-weight:700;font-size:11px;color:#8B0000;margin:6px 0 3px;border-bottom:1px solid #e0e0e0;padding-bottom:2px">'+dept+'</div>';
+        depts[dept].forEach(function(emp){
+            h+='<label style="display:flex;align-items:center;gap:6px;padding:3px 4px;font-size:12px;cursor:pointer"><input type="checkbox" class="pub-emp-cb" value="'+emp.id+'" checked onchange="updatePubPreview()"> '+emp.name+'</label>';
+        });
+        h+='</div>';
+    });
+    // Reset dept filter
+    document.getElementById('pubDeptFilter').value='all';
+    listEl.innerHTML=h;
+    document.getElementById('publishScheduleModal').classList.add('active');
+    updatePubPreview();
+}
+function pubFilterDept(){
+    var filter=document.getElementById('pubDeptFilter').value;
+    document.querySelectorAll('.pub-emp-group').forEach(function(g){
+        var dept=g.getAttribute('data-dept');
+        g.style.display=(filter==='all'||dept===filter)?'':'none';
+    });
+    // Auto-select visible, deselect hidden
+    document.querySelectorAll('.pub-emp-cb').forEach(function(cb){
+        var grp=cb.closest('.pub-emp-group');
+        cb.checked=grp&&grp.style.display!=='none';
+    });
+    updatePubPreview();
+}
+function pubSelectAll(sel){
+    document.querySelectorAll('.pub-emp-group').forEach(function(g){
+        if(g.style.display==='none')return;
+        g.querySelectorAll('.pub-emp-cb').forEach(function(cb){cb.checked=sel;});
+    });
+    updatePubPreview();
+}
+function fmtISO(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function setPubRange(type){
+    var today=new Date();var dow=today.getDay();
+    var from,to;
+    if(type==='thisWeek'){from=new Date(today);from.setDate(today.getDate()-(dow===0?6:dow-1));to=new Date(from);to.setDate(from.getDate()+6);}
+    else if(type==='nextWeek'){from=new Date(today);from.setDate(today.getDate()-(dow===0?6:dow-1)+7);to=new Date(from);to.setDate(from.getDate()+6);}
+    else if(type==='thisMonth'){from=new Date(today.getFullYear(),today.getMonth(),1);to=new Date(today.getFullYear(),today.getMonth()+1,0);}
+    document.getElementById('pubFromDate').value=fmtISO(from);
+    document.getElementById('pubToDate').value=fmtISO(to);
+    updatePubPreview();
+}
+function getSelectedPubEmps(){
+    var sel=new Set();
+    document.querySelectorAll('.pub-emp-cb:checked').forEach(function(cb){sel.add(cb.value);});
+    return sel;
+}
+function updatePubPreview(){
+    var from=document.getElementById('pubFromDate').value;
+    var to=document.getElementById('pubToDate').value;
+    if(!from||!to){document.getElementById('pubPreview').textContent='Chọn khoảng thời gian';return;}
+    var fd=new Date(from),td=new Date(to);
+    var selEmps=getSelectedPubEmps();
+    var count=0,empSet=new Set();
+    for(var d=new Date(fd);d<=td;d.setDate(d.getDate()+1)){
+        var ds=fmtISO(d);
+        employees.forEach(function(emp){
+            if(emp.endDate)return;
+            if(selEmps.size>0&&!selEmps.has(emp.id))return;
+            var allS=findAllSchedulesForEmp(ds,emp.id);
+            if(allS.length>0){allS.forEach(function(e){if(e.sh&&e.sh.start){count++;empSet.add(emp.id);}});}
+            else{var key=ds+'-'+emp.id;var val=schedules[key];if(val&&val.start){count++;empSet.add(emp.id);}}
+        });
+    }
+    document.getElementById('pubPreview').innerHTML='<i class="fas fa-info-circle" style="color:#1565c0"></i> <b>'+count+'</b> ca của <b>'+empSet.size+'</b> nhân viên từ <b>'+from+'</b> đến <b>'+to+'</b>';
+}
+function doPublishScheduleRange(){
+    var from=document.getElementById('pubFromDate').value;
+    var to=document.getElementById('pubToDate').value;
+    if(!from||!to){alert('Chọn khoảng thời gian! 請選擇時間範圍');return;}
+    var fd=new Date(from),td=new Date(to);
+    var selEmps=getSelectedPubEmps();
+    if(selEmps.size===0){alert('Chọn ít nhất 1 nhân viên! 請選擇至少一位員工');return;}
+    var data=[];
+    var empMap={};employees.forEach(function(e){empMap[e.id]=e;});
+    var allT=getAllTasks();var tMap={};allT.forEach(function(t){tMap[t.id]=t;});
+    for(var d=new Date(fd);d<=td;d.setDate(d.getDate()+1)){
+        var ds=fmtISO(d);
+        employees.forEach(function(emp){
+            if(emp.endDate)return;
+            if(!selEmps.has(emp.id))return;
+            // Use findAllSchedulesForEmp to catch both home-dept and cross-dept keys
+            var allScheds=findAllSchedulesForEmp(ds,emp.id);
+            allScheds.forEach(function(entry){
+                var val=entry.sh;var dk=entry.dk;
+                if(val&&val.start){
+                    var ns=normalizeTime(val.start),ne=normalizeTime(val.end);
+                    var colorKey=ns+'-'+ne;var color=shiftColors[colorKey]||'';
+                    var taskArr=taskAssignments[dk];var taskStr='';
+                    if(taskArr&&taskArr.length){
+                        taskStr=taskArr.map(function(tid){var t=tMap[tid];return t?(t.name+'|'+(t.icon||'fa-circle')+'|'+(t.color||'#546e7a')):'';}).filter(Boolean).join(';;');
+                    }
+                    data.push({empId:emp.id,date:ds,start:ns,end:ne,empName:emp.name||'',dept:entry.dept||emp.dept||'',color:color,task:taskStr});
+                }
+            });
+            // Fallback: if no entries found via findAll, try simple key (backward compat)
+            if(allScheds.length===0){
+                var key=ds+'-'+emp.id;
+                var val=schedules[key];
+                if(val&&val.start){
+                    var ns=normalizeTime(val.start),ne=normalizeTime(val.end);
+                    var colorKey=ns+'-'+ne;var color=shiftColors[colorKey]||'';
+                    var taskArr=taskAssignments[key];var taskStr='';
+                    if(taskArr&&taskArr.length){
+                        taskStr=taskArr.map(function(tid){var t=tMap[tid];return t?(t.name+'|'+(t.icon||'fa-circle')+'|'+(t.color||'#546e7a')):'';}).filter(Boolean).join(';;');
+                    }
+                    data.push({empId:emp.id,date:ds,start:ns,end:ne,empName:emp.name||'',dept:emp.dept||'',color:color,task:taskStr});
+                }
+            }
+        });
+    }
+    if(data.length===0){alert('Không có dữ liệu lịch làm! 無排班數據');return;}
+    if(!confirm('Phát '+data.length+' ca của '+selEmps.size+' nhân viên?\n發布'+data.length+'個班次？'))return;
+    var params={action:'publishSchedule',bossPassword:empPortalConfig.bossPassword,period:from+' to '+to,data:JSON.stringify(data)};
+    // Show loading
+    var pubBtn=document.querySelector('#publishScheduleModal .btn[onclick*="doPublish"]');
+    if(pubBtn){pubBtn.disabled=true;pubBtn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Đang phát...';}
+    portalApiCall(params,function(res){
+        if(pubBtn){pubBtn.disabled=false;pubBtn.innerHTML='<i class="fas fa-paper-plane"></i> Phát lịch 發布';}
+        if(res.success){closeModal('publishScheduleModal');var tc2=data.filter(function(d){return d.task&&d.task.length>0;}).length;showSuccess('Đã phát lịch! '+(res.count||data.length)+' ca'+(tc2?' ('+tc2+' có task)':'')+' 已發布排班');}
+        else{alert('Lỗi phát lịch: '+(res.error||'Không xác định')+'\n\nThử lại hoặc kiểm tra kết nối mạng.');}
+    });
+}
 function bossPublishPayroll() {
     if (!empPortalConfig.apiUrl) {
-        alert('Chưa cấu hình empPortalConfig.apiUrl!');
+        alert('Chưa cấu hình API! 尚未設定API');
         return;
     }
     var monthInput = document.getElementById('payrollMonth');
     var monthVal = monthInput ? monthInput.value : '';
-    if (!monthVal) { alert('Vui lòng chọn tháng!'); return; }
+    if (!monthVal) { alert('Vui lòng chọn tháng! 請選擇月份'); return; }
     
     if (!confirm('Phát bảng lương tháng ' + monthVal + ' cho nhân viên xem?')) return;
     
@@ -7625,40 +8155,155 @@ function bossPublishPayroll() {
         var exKey = emp.id + '_' + monthKey;
         if (payrollExclude[exKey]) return;
         
-        // Collect attendance for this employee
+        // Compute actual payroll using same logic as payroll display
+        var pd = getPayrollData(emp, monthKey);
+        
+        // Collect attendance for this employee — include ALL days with data
         var attArr = [];
         var daysInMonth = new Date(y, m, 0).getDate();
+        var _holDayMap = {};
+        (pd.holDetails||[]).forEach(function(hd){ _holDayMap[hd.day] = hd; });
+        var _ws = getWS(emp);
+        var _effH = getEffectiveHours(emp) || 9;
         for (var d = 1; d <= daysInMonth; d++) {
             var dateStr = y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
             var k = dateStr + '-' + emp.id;
-            if (attendanceRaw[k]) {
+            var raw = attendanceRaw[k] || attTimesheetData[k];
+            var ncVal = attendanceData[k] || 0;
+            var covr = attConvertOverrides[k] || {};
+            var sh = schedules[k];
+            var schedHrs = sh && sh.start && sh.end ? getScheduleHours(emp.id, k) : 0;
+            var actualHrs = raw && raw.hours ? raw.hours : 0;
+            var hrs = actualHrs || schedHrs;
+            var dayNc = 0, dayOt = 0, dayLe = 0;
+            if (covr.nc !== undefined) {
+                dayNc = covr.nc;
+                if (covr.ot !== undefined) dayOt = covr.ot;
+                else if (emp.type === 'Fulltime' && hrs > _ws.standardHours) dayOt = hrs - _ws.standardHours;
+            } else if (_holDayMap[d]) {
+                // Holiday — le hours calculated from payroll data
+                var hd = _holDayMap[d];
+                dayLe = emp.type === 'Fulltime' ? hd.hrs : Math.round(hd.hrs * 10) / 10;
+                if (emp.type === 'Fulltime' && hrs > _ws.standardHours) dayOt = hrs - _ws.standardHours;
+            } else if (hrs > 0) {
+                if (emp.type === 'Fulltime') {
+                    if (hrs >= _ws.standardHours) { dayNc = _ws.effectiveHours || _effH; dayOt = hrs - _ws.standardHours; }
+                    else { dayNc = Math.max(0, hrs - (_ws.breakHours || 0)); }
+                } else { dayNc = Math.round(hrs * 10) / 10; }
+            }
+            if (covr.ot !== undefined) dayOt = covr.ot;
+            if (covr.le !== undefined) dayLe = covr.le;
+            if (raw || ncVal || dayNc > 0 || dayOt > 0 || dayLe > 0) {
                 attArr.push({
                     day: d,
-                    checkin: attendanceRaw[k].checkin || '',
-                    checkout: attendanceRaw[k].checkout || '',
-                    hours: attendanceRaw[k].hours || 0,
-                    nc: attendanceData[k] || 0,
-                    ot: 0,
-                    le: 0
+                    checkin: raw ? (raw.checkin || '') : '',
+                    checkout: raw ? (raw.checkout || '') : '',
+                    hours: hrs,
+                    nc: dayNc,
+                    ot: dayOt,
+                    le: dayLe
                 });
             }
         }
+        var isFT = emp.type === 'Fulltime';
+        var effH = getEffectiveHours(emp) || 9;
+        var ws = getWS(emp);
+        var stdDays = ws.stdWorkDays || 26;
+        var wt = emp.wageType || 'monthly_hours';
+        var pk2 = monthKey + '-' + emp.id;
+        var ovr = payrollOverrides[pk2] || {};
+        var _es = getEffSalary(emp, monthKey);
+        var baseSalForCalc = _es.baseSalary;
+        var respForCalc = emp.responsibility || 0;
+        var attForCalc = emp.attendance || 0;
+        var ts = baseSalForCalc + respForCalc + attForCalc + (ovr.otherAllowance || 0);
+        var ncDays = isFT ? pd.nc / effH : pd.nc;
+        if (wt === 'monthly_fixed' && pd.ncDaysCount != null) ncDays = pd.ncDaysCount;
+        var sb;
+        if (isFT) {
+            if (wt === 'monthly_fixed') {
+                var dOff = emp.fixedDaysOff != null ? emp.fixedDaysOff : 1;
+                var rd = getWorkDaysInMonth(y, m, dOff);
+                var _ncD = (pd.ncDaysCount || 0) + pd.holDetails.length;
+                sb = _ncD >= rd ? (emp.fixedSalary || ts) : (emp.fixedSalary || ts) * (_ncD / rd);
+            } else if (wt === 'hourly') {
+                sb = (emp.hourlyRate || 0) * pd.nc;
+            } else {
+                sb = (ts / stdDays) * ncDays;
+            }
+        } else {
+            var ptRate = emp.hourlyRate || 25000;
+            sb = ptRate * pd.nc;
+        }
+        var otRate = isFT ? ts / stdDays / effH * 1.3 : 0;
+        var otPay = pd.ot * otRate;
+        var lePay = 0;
+        var leDaysDetail = 0;
+        pd.holDetails.forEach(function(hd) {
+            if (isFT) {
+                var wt2 = emp.wageType || 'monthly_hours';
+                if (wt2 === 'monthly_fixed') { leDaysDetail += 1; lePay += _es.baseSalary / 30 * 2; }
+                else { var dayFrac2 = hd.hrs / effH; if (dayFrac2 > 1) dayFrac2 = 1; leDaysDetail += dayFrac2; lePay += _es.baseSalary / stdDays * 2; }
+            } else { var _ptLR = emp.hourlyRate || 25000; lePay += _ptLR * 2 * hd.hrs; }
+        });
+        var bonusItems = ovr.bonusItems || [];
+        var deductItems = ovr.deductItems || [];
+        var otherItems = ovr.otherItems || [];
+        var totalBonus = 0; bonusItems.forEach(function(b) { totalBonus += b.amount || 0; });
+        var totalDeduct = 0; deductItems.forEach(function(d) { totalDeduct += d.amount || 0; });
+        var totalOther = 0; otherItems.forEach(function(o) { totalOther += o.amount || 0; });
+        if (bonusItems.length === 0 && (ovr.bonus || 0) > 0) totalBonus = ovr.bonus;
+        if (deductItems.length === 0 && (ovr.deduct || 0) > 0) totalDeduct = ovr.deduct;
+        var totalPay = sb + otPay + lePay + totalBonus + totalOther;
+        var netPay = totalPay - totalDeduct;
+        var fc2 = function(n) { return formatCurrency(Math.round(n)); };
         
-        // Basic payroll fields
         var fields = {
-            baseSalary: emp.salary || 0,
-            ncDays: 0,
-            netPay: 0
+            'Tổng giờ NC': isFT ? parseFloat(ncDays.toFixed(1)) + ' ngày' : parseFloat(pd.nc.toFixed(1)) + 'h',
+            'Tổng giờ OT': parseFloat(pd.ot.toFixed(1)) + 'h',
+            'Tổng giờ Lễ': leDaysDetail > 0 ? (isFT ? parseFloat(leDaysDetail.toFixed(1)) + ' ngày' : parseFloat(leDaysDetail.toFixed(1)) + 'h') : '0',
+            'Lương NC': fc2(sb),
+            'Lương OT': fc2(otPay),
+            'Lương Lễ': fc2(lePay),
+            'Phụ cấp': fc2(totalOther),
+            'Thưởng': fc2(totalBonus),
+            'Khấu trừ': fc2(totalDeduct),
+            'THỰC LÃNH': fc2(netPay)
         };
         
-        // Try to gather from payrollOverrides if computed
-        var poKey = emp.id + '_' + monthKey;
-        if (payrollOverrides[poKey]) {
-            var po = payrollOverrides[poKey];
-            for (var pk in po) {
-                fields[pk] = po[pk];
-            }
-        }
+        // Add detailed breakdown for NV portal
+        var _detail = {
+            type: emp.type || '',
+            name: emp.name || '',
+            nameCN: emp.nameCN || '',
+            position: emp.position || '',
+            dept: emp.dept || '',
+            startDate: emp.startDate || '',
+            wageType: wt,
+            baseSalary: baseSalForCalc,
+            respAllowance: respForCalc,
+            attAllowance: attForCalc,
+            otherAllowance: ovr.otherAllowance || 0,
+            totalIncome: ts,
+            actualDays: isFT ? parseFloat(ncDays.toFixed(2)) : parseFloat(pd.nc.toFixed(1)),
+            stdDays: stdDays,
+            effectiveHours: effH,
+            monthlyWage: Math.round(sb),
+            otHours: parseFloat(pd.ot.toFixed(1)),
+            otPay: Math.round(otPay),
+            holDetails: pd.holDetails.map(function(hd) {
+                return { day: hd.day, hrs: hd.hrs, mul: isFT ? 2 : 2 };
+            }),
+            holPay: Math.round(lePay),
+            bonusItems: bonusItems,
+            deductItems: deductItems,
+            otherItems: otherItems,
+            totalBonus: Math.round(totalBonus),
+            totalDeduct: Math.round(totalDeduct),
+            totalOther: Math.round(totalOther),
+            netPay: Math.round(netPay)
+        };
+        fields['_detail'] = JSON.stringify(_detail);
         
         data.push({ empId: emp.id, fields: fields, attendance: attArr });
     });
@@ -7684,14 +8329,38 @@ function bossPublishPayroll() {
     });
 }
 
+function bossUnpublishPayroll() {
+    if (!empPortalConfig.apiUrl) {
+        alert('Chưa cấu hình API! 尚未設定API');
+        return;
+    }
+    var monthInput = document.getElementById('payrollMonth');
+    var monthVal = monthInput ? monthInput.value : '';
+    if (!monthVal) { alert('Vui lòng chọn tháng! 請選擇月份'); return; }
+    var parts = monthVal.split('-');
+    var label = 'T' + parseInt(parts[1]) + '/' + parts[0];
+    if (!confirm('Thu hồi bảng lương ' + label + '?\nNhân viên sẽ không xem được bảng lương và chấm công tháng này nữa.\n\n撤回 ' + label + ' 的工資單？員工將無法查看。')) return;
+    portalApiCall({
+        action: 'unpublishPayroll',
+        bossPassword: empPortalConfig.bossPassword,
+        month: monthVal
+    }, function(res) {
+        if (res.success) {
+            alert('Đã thu hồi bảng lương ' + label + '!\n已撤回 ' + label + ' 工資單！');
+        } else {
+            alert('Lỗi: ' + (res.error || 'Không xác định'));
+        }
+    });
+}
+
 function bossPublishAttendance() {
     if (!empPortalConfig.apiUrl) {
-        alert('Chưa cấu hình empPortalConfig.apiUrl!');
+        alert('Chưa cấu hình API! 尚未設定API');
         return;
     }
     var monthInput = document.getElementById('attendanceMonth');
     var monthVal = monthInput ? monthInput.value : '';
-    if (!monthVal) { alert('Vui lòng chọn tháng!'); return; }
+    if (!monthVal) { alert('Vui lòng chọn tháng! 請選擇月份'); return; }
     
     var data = [];
     var activeEmps = employees.filter(function(e) { return !e.endDate; });
@@ -7699,20 +8368,47 @@ function bossPublishAttendance() {
     var daysInMonth = new Date(parts[0], parts[1], 0).getDate();
     
     activeEmps.forEach(function(emp) {
+        var _pd2 = getPayrollData(emp, monthVal);
+        var _holMap2 = {};
+        (_pd2.holDetails||[]).forEach(function(hd){ _holMap2[hd.day] = hd; });
+        var _ws2 = getWS(emp);
+        var _effH2 = getEffectiveHours(emp) || 9;
         for (var d = 1; d <= daysInMonth; d++) {
             var k = monthVal + '-' + String(d).padStart(2, '0') + '-' + emp.id;
             var raw = attendanceRaw[k] || attTimesheetData[k];
-            var nc = attendanceData[k];
-            if (raw || nc) {
+            var ncVal = attendanceData[k];
+            var covr2 = attConvertOverrides[k] || {};
+            var sh2 = schedules[k];
+            var schedHrs2 = sh2 && sh2.start && sh2.end ? getScheduleHours(emp.id, k) : 0;
+            var actualHrs2 = raw && raw.hours ? raw.hours : 0;
+            var hrs2 = actualHrs2 || schedHrs2;
+            var dNc = 0, dOt = 0, dLe = 0;
+            if (covr2.nc !== undefined) {
+                dNc = covr2.nc;
+                if (covr2.ot !== undefined) dOt = covr2.ot;
+                else if (emp.type === 'Fulltime' && hrs2 > _ws2.standardHours) dOt = hrs2 - _ws2.standardHours;
+            } else if (_holMap2[d]) {
+                var hd2 = _holMap2[d];
+                dLe = emp.type === 'Fulltime' ? hd2.hrs : Math.round(hd2.hrs * 10) / 10;
+                if (emp.type === 'Fulltime' && hrs2 > _ws2.standardHours) dOt = hrs2 - _ws2.standardHours;
+            } else if (hrs2 > 0) {
+                if (emp.type === 'Fulltime') {
+                    if (hrs2 >= _ws2.standardHours) { dNc = _ws2.effectiveHours || _effH2; dOt = hrs2 - _ws2.standardHours; }
+                    else { dNc = Math.max(0, hrs2 - (_ws2.breakHours || 0)); }
+                } else { dNc = Math.round(hrs2 * 10) / 10; }
+            }
+            if (covr2.ot !== undefined) dOt = covr2.ot;
+            if (covr2.le !== undefined) dLe = covr2.le;
+            if (raw || ncVal || dNc > 0 || dOt > 0 || dLe > 0) {
                 data.push({
                     empId: emp.id,
                     day: d,
                     checkin: raw ? (raw.checkin || '') : '',
                     checkout: raw ? (raw.checkout || '') : '',
-                    hours: raw ? (raw.hours || 0) : 0,
-                    nc: nc || 0,
-                    ot: 0,
-                    le: 0
+                    hours: hrs2,
+                    nc: dNc,
+                    ot: dOt,
+                    le: dLe
                 });
             }
         }
@@ -7741,7 +8437,7 @@ function bossPublishAttendance() {
 
 function bossViewRegistrations() {
     if (!empPortalConfig.apiUrl) {
-        alert('Chưa cấu hình empPortalConfig.apiUrl!');
+        alert('Chưa cấu hình API! 尚未設定API');
         return;
     }
     var modal = document.getElementById('registrationsModal');
@@ -7825,18 +8521,22 @@ function getMondayOfWeek(dateStr) {
 }
 
 function loadRegistrationView() {
-    var picker = document.getElementById('regWeekPicker');
-    if (!picker.value) {
-        var mon = getNextMonday();
-        picker.value = mon.getFullYear() + '-' + String(mon.getMonth()+1).padStart(2,'0') + '-' + String(mon.getDate()).padStart(2,'0');
+    var startEl = document.getElementById('regStartDate');
+    var endEl = document.getElementById('regEndDate');
+    if (!startEl.value || !endEl.value) {
+        // Load active period from server first
+        loadActiveRegPeriod();
+        return;
     }
-    var monday = getMondayOfWeek(picker.value);
-    var sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    document.getElementById('regWeekLabel').textContent =
-        monday.getDate() + '/' + (monday.getMonth()+1) + ' - ' + sunday.getDate() + '/' + (sunday.getMonth()+1) + '/' + sunday.getFullYear();
+    var sISO = regGetISO('regStartDate');
+    var eISO = regGetISO('regEndDate');
+    var startDate = new Date(sISO + 'T00:00:00');
+    var endDate = new Date(eISO + 'T00:00:00');
+    if (endDate < startDate) { alert('Ngày kết thúc phải sau ngày bắt đầu!'); return; }
 
-    var weekKey = getWeekKeyFromDate(monday);
+    var periodKey = sISO + '_' + eISO;
+    document.getElementById('regWeekLabel').textContent =
+        startDate.getDate() + '/' + (startDate.getMonth()+1) + ' - ' + endDate.getDate() + '/' + (endDate.getMonth()+1) + '/' + endDate.getFullYear();
 
     if (!empPortalConfig.apiUrl) {
         document.getElementById('regTableContainer').innerHTML = '<div style="text-align:center;padding:30px;color:#e65100">Chưa cấu hình empPortalConfig.apiUrl</div>';
@@ -7848,7 +8548,7 @@ function loadRegistrationView() {
     // Check lock status first
     portalApiCall({
         action: 'getRegLock',
-        weekKey: weekKey
+        weekKey: periodKey
     }, function(lockRes) {
         var isLocked = lockRes.success && lockRes.locked;
         updateLockUI(isLocked);
@@ -7856,14 +8556,115 @@ function loadRegistrationView() {
         portalApiCall({
             action: 'getRegistrations',
             bossPassword: empPortalConfig.bossPassword,
-            weekKey: weekKey
+            weekKey: periodKey
         }, function(res) {
             if (!res.success) {
                 document.getElementById('regTableContainer').innerHTML = '<div style="color:red;padding:10px">Lỗi: ' + (res.error || '') + '</div>';
                 return;
             }
-            renderRegTable(res.registrations || [], monday);
+            window._lastRegData = res.registrations || []; renderRegTableFlex(window._lastRegData, startDate, endDate);
         });
+    });
+}
+
+function regNormalizeISO(s) {
+    // Convert any date format to YYYY-MM-DD
+    if (!s) return '';
+    s = String(s).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    // Try dd/mm/yyyy
+    var m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) return m[3] + '-' + m[2].padStart(2,'0') + '-' + m[1].padStart(2,'0');
+    // Try parsing as Date string
+    var d = new Date(s);
+    if (!isNaN(d.getTime())) return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    return s;
+}
+function isoToDDMMYYYY(iso) {
+    if (!iso) return '';
+    var p = iso.split('-');
+    if (p.length === 3) return p[2] + '/' + p[1] + '/' + p[0];
+    return iso;
+}
+function regGetISO(elId) {
+    // Get ISO date from dd/mm/yyyy text input
+    var v = document.getElementById(elId).value;
+    return regNormalizeISO(v);
+}
+function openDatePicker(el) {
+    // Create hidden date input to leverage native picker
+    var tmp = document.createElement('input');
+    tmp.type = 'date';
+    tmp.style.position = 'absolute';
+    tmp.style.opacity = '0';
+    tmp.style.pointerEvents = 'none';
+    // Pre-fill with current value
+    var curISO = regNormalizeISO(el.value);
+    if (curISO) tmp.value = curISO;
+    el.parentElement.appendChild(tmp);
+    tmp.addEventListener('change', function() {
+        if (tmp.value) {
+            el.value = isoToDDMMYYYY(tmp.value);
+            el.dispatchEvent(new Event('change'));
+        }
+        tmp.remove();
+    });
+    tmp.addEventListener('blur', function() { setTimeout(function(){ tmp.remove(); }, 200); });
+    tmp.showPicker ? tmp.showPicker() : tmp.click();
+}
+
+function loadActiveRegPeriod() {
+    if (!empPortalConfig.apiUrl) return;
+    portalApiCall({ action: 'getRegPeriod' }, function(res) {
+        var startEl = document.getElementById('regStartDate');
+        var endEl = document.getElementById('regEndDate');
+        if (res.success && res.startDate && res.endDate) {
+            var sISO = regNormalizeISO(res.startDate);
+            var eISO = regNormalizeISO(res.endDate);
+            startEl.value = isoToDDMMYYYY(sISO);
+            endEl.value = isoToDDMMYYYY(eISO);
+        } else {
+            // Default: next Monday to Sunday
+            var mon = getNextMonday();
+            var sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+            var sISO = mon.getFullYear() + '-' + String(mon.getMonth()+1).padStart(2,'0') + '-' + String(mon.getDate()).padStart(2,'0');
+            var eISO = sun.getFullYear() + '-' + String(sun.getMonth()+1).padStart(2,'0') + '-' + String(sun.getDate()).padStart(2,'0');
+            startEl.value = isoToDDMMYYYY(sISO);
+            endEl.value = isoToDDMMYYYY(eISO);
+        }
+        loadRegistrationView();
+    });
+}
+
+function onRegPeriodChange() {
+    var s = document.getElementById('regStartDate').value;
+    var e = document.getElementById('regEndDate').value;
+    if (s && e) loadRegistrationView();
+}
+
+function setRegPeriodAndPublish() {
+    var startEl = document.getElementById('regStartDate');
+    var endEl = document.getElementById('regEndDate');
+    if (!startEl.value || !endEl.value) { alert('Vui lòng chọn ngày bắt đầu và kết thúc!'); return; }
+    var sISO = regGetISO('regStartDate');
+    var eISO = regGetISO('regEndDate');
+    if (new Date(eISO) < new Date(sISO)) { alert('Ngày kết thúc phải sau ngày bắt đầu!'); return; }
+    var sd = new Date(sISO + 'T00:00:00'), ed = new Date(eISO + 'T00:00:00');
+    var numDays = Math.round((ed - sd) / 86400000) + 1;
+    if (!confirm('Đặt khoảng đăng ký ca: ' + sd.getDate() + '/' + (sd.getMonth()+1) + ' - ' + ed.getDate() + '/' + (ed.getMonth()+1) + ' (' + numDays + ' ngày).\nNhân viên sẽ thấy khoảng thời gian này khi đăng ký ca.\n\n設定登記班時段？')) return;
+    
+    portalApiCall({
+        action: 'setRegPeriod',
+        bossPassword: empPortalConfig.bossPassword,
+        startDate: sISO,
+        endDate: eISO
+    }, function(res) {
+        if (res.success) {
+            showSuccess('Đã đặt khoảng đăng ký ca! 已設定登記時段');
+            loadRegistrationView();
+        } else {
+            alert('Lỗi: ' + (res.error || ''));
+        }
     });
 }
 
@@ -7886,18 +8687,18 @@ function updateLockUI(isLocked) {
 
 function toggleRegLock() {
     if (!empPortalConfig.apiUrl) { alert('Chưa cấu hình API'); return; }
-    var picker = document.getElementById('regWeekPicker');
-    if (!picker.value) { alert('Chọn tuần trước'); return; }
-    var monday = getMondayOfWeek(picker.value);
-    var weekKey = getWeekKeyFromDate(monday);
+    var startEl = document.getElementById('regStartDate');
+    var endEl = document.getElementById('regEndDate');
+    if (!startEl.value || !endEl.value) { alert('Chọn khoảng thời gian trước'); return; }
+    var periodKey = startEl.value + '_' + endEl.value;
     var newLock = currentRegLocked ? '0' : '1';
-    var msg = currentRegLocked ? 'Mở khóa đăng ký tuần này?' : 'Khóa đăng ký tuần này? Nhân viên sẽ không thể đăng ký hoặc chỉnh sửa.';
+    var msg = currentRegLocked ? 'Mở khóa đăng ký?' : 'Khóa đăng ký? Nhân viên sẽ không thể đăng ký hoặc chỉnh sửa.';
     if (!confirm(msg)) return;
 
     portalApiCall({
         action: 'lockRegistration',
         bossPassword: empPortalConfig.bossPassword,
-        weekKey: weekKey,
+        weekKey: periodKey,
         lock: newLock
     }, function(res) {
         if (res.success) {
@@ -7945,8 +8746,9 @@ function normalizeTime(timeStr) {
     return s;
 }
 
-function renderRegTable(regs, monday) {
-    // Build lookup: empId -> {date -> {start, end, offReason}}
+function renderRegTableFlex(regs, startDate, endDate) {
+    var dayLabelsMap = ['CN','T2','T3','T4','T5','T6','T7'];
+    // Build lookup
     var lookup = {};
     var empIds = {};
     regs.forEach(function(r) {
@@ -7958,9 +8760,7 @@ function renderRegTable(regs, monday) {
         empIds[r.empId] = true;
     });
 
-    // Get all active employees
     var activeEmps = employees.filter(function(e) { return !e.endDate; });
-    // Sort: registered first, then by name
     activeEmps.sort(function(a, b) {
         var aReg = empIds[a.id] ? 0 : 1;
         var bReg = empIds[b.id] ? 0 : 1;
@@ -7968,62 +8768,55 @@ function renderRegTable(regs, monday) {
         return a.name > b.name ? 1 : -1;
     });
 
-    var dayLabels = ['T2','T3','T4','T5','T6','T7','CN'];
+    // Build date columns from startDate to endDate
     var dates = [];
-    for (var i = 0; i < 7; i++) {
-        var d = new Date(monday);
-        d.setDate(monday.getDate() + i);
-        dates.push(d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'));
+    var cur = new Date(startDate);
+    while (cur <= endDate) {
+        dates.push(cur.getFullYear() + '-' + String(cur.getMonth()+1).padStart(2,'0') + '-' + String(cur.getDate()).padStart(2,'0'));
+        cur.setDate(cur.getDate() + 1);
     }
+    var numDays = dates.length;
 
-    var h = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:800px">';
-    // Header
+    var h = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:' + Math.max(700, 140 + numDays * 75) + 'px">';
     h += '<thead><tr style="background:linear-gradient(135deg,#8B0000,#5c0000);color:white">';
     h += '<th style="padding:10px 8px;text-align:left;min-width:150px;position:sticky;left:0;background:#8B0000;z-index:2;font-size:13px">Nhân viên</th>';
     
-    for (var i = 0; i < 7; i++) {
-        var dd = new Date(monday);
-        dd.setDate(monday.getDate() + i);
-        var isWE = i >= 5;
-        h += '<th style="padding:10px 6px;text-align:center;font-size:12px;' + (isWE ? 'background:#3e0000' : '') + '">' + dayLabels[i] + ' ' + dd.getDate() + '/' + (dd.getMonth()+1) + '</th>';
+    for (var i = 0; i < numDays; i++) {
+        var dd = new Date(dates[i] + 'T00:00:00');
+        var dw = dd.getDay();
+        var isWE = dw === 0 || dw === 6;
+        h += '<th style="padding:8px 3px;text-align:center;font-size:11px;' + (isWE ? 'background:#3e0000' : '') + '">' + dayLabelsMap[dw] + ' ' + dd.getDate() + '/' + (dd.getMonth()+1) + '</th>';
     }
     h += '</tr></thead><tbody>';
 
     activeEmps.forEach(function(emp) {
         var hasReg = !!empIds[emp.id];
         h += '<tr style="border-bottom:1px solid #e0e0e0;' + (hasReg ? 'background:#fcfcfc' : 'opacity:.6') + '">';
-        h += '<td style="padding:8px;font-weight:600;font-size:13px;position:sticky;left:0;background:' + (hasReg ? '#f8fff8' : 'white') + ';z-index:1;border-right:2px solid #eee;cursor:grab" draggable="true" data-empid="' + emp.id + '" data-dept="' + emp.dept + '" data-ctx="registration" ondragstart="empDragStart(event)" ondragover="empDragOver(event)" ondrop="empDrop(event)"><i class="fas fa-grip-vertical" style="color:#ccc;font-size:8px;margin-right:3px"></i>' + emp.name + ' <span style="color:#aaa;font-size:10px;font-weight:400">' + emp.id + '</span></td>';
-        // Status
-        
+        h += '<td style="padding:8px;font-weight:600;font-size:13px;position:sticky;left:0;background:' + (hasReg ? '#f8fff8' : 'white') + ';z-index:1;border-right:2px solid #eee;cursor:grab" draggable="true" data-empid="' + emp.id + '" data-dept="' + emp.dept + '" data-ctx="registration" ondragstart="empDragStart(event)" ondragover="empDragOver(event)" ondrop="empDrop(event)"><i class="fas fa-grip-vertical" style="color:#ccc;font-size:8px;margin-right:3px"></i>' + emp.name + ' <span style="color:#aaa;font-size:10px;font-weight:400">' + emp.id + '</span>' + (hasReg ? ' <i class="fas fa-trash-alt" style="color:#e57373;font-size:10px;cursor:pointer;margin-left:4px" title="Xóa tất cả đăng ký 刪除所有登記" onclick="event.stopPropagation();deleteAllRegForEmp(\'' + emp.id + '\',\'' + emp.name + '\')"></i>' : '') + '</td>';
 
-        for (var j = 0; j < 7; j++) {
+        for (var j = 0; j < numDays; j++) {
             var dateKey = dates[j];
-            var isWE = j >= 5;
-            var cellBg = isWE ? '#fffde7' : 'white';
+            var dd2 = new Date(dateKey + 'T00:00:00');
+            var isWE2 = dd2.getDay() === 0 || dd2.getDay() === 6;
+            var cellBg = isWE2 ? '#fffde7' : 'white';
             var reg = (lookup[emp.id] && lookup[emp.id][dateKey]) ? lookup[emp.id][dateKey] : null;
 
             if (reg) {
                 if (reg.start && reg.start !== '') {
-                    // Working - clickable for boss edit
                     h += '<td style="padding:5px;text-align:center;background:' + cellBg + ';cursor:pointer" onclick="openRegEdit(\'' + emp.id + '\',\'' + dateKey + '\',\'' + (reg.start||'') + '\',\'' + (reg.end||'') + '\')" title="Click để chỉnh sửa">';
                     var startParts = reg.start.split(',');
                     var endParts = reg.end.split(',');
-                    var cellHtml = '';
                     for (var sp = 0; sp < startParts.length; sp++) {
                         if (!startParts[sp]) continue;
-                        cellHtml += '<div style="background:#e8f5e9;color:#1b5e20;padding:4px 6px;border-radius:6px;font-weight:700;font-size:11px;margin-bottom:2px;border:1px solid #a5d6a7">' + startParts[sp] + ' - ' + (endParts[sp]||'') + '</div>';
+                        h += '<div style="background:#e8f5e9;color:#1b5e20;padding:2px 4px;border-radius:4px;font-weight:700;font-size:10px;margin-bottom:1px;border:1px solid #a5d6a7;white-space:nowrap">' + startParts[sp] + ' - ' + (endParts[sp]||'') + '</div>';
                     }
-                    h += cellHtml;
                     h += '</td>';
                 } else {
-                    // OFF - clickable for boss edit
-                    h += '<td style="padding:5px;text-align:center;background:' + cellBg + ';cursor:pointer" onclick="openRegEdit(\'' + emp.id + '\',\'' + dateKey + '\',\'\',\'\',\'' + (reg.offReason||'').replace(/'/g,"\\'") + '\')" title="Click để chỉnh sửa">';
                     var offR = reg.offReason ? String(reg.offReason).trim() : '';
                     if (offR === 'OFF' || offR === 'undefined' || offR === 'null') offR = '';
-                    h += '<div style="background:#ffcdd2;color:#b71c1c;padding:' + (offR ? '3px 6px' : '4px 6px') + ';border-radius:6px;font-size:11px;font-weight:700;border:1px solid #ef9a9a">OFF</div>';
-                    if (offR) {
-                        h += '<div style="font-size:9px;color:#bf360c;margin-top:2px;font-weight:600;background:#fff8e1;padding:2px 5px;border-radius:4px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + offR.replace(/"/g,'&quot;') + '"><i class="fas fa-comment-dots" style="font-size:8px;margin-right:2px"></i>' + offR + '</div>';
-                    }
+                    h += '<td style="padding:5px;text-align:center;background:' + cellBg + ';cursor:pointer" onclick="openRegEdit(\'' + emp.id + '\',\'' + dateKey + '\',\'\',\'\',\'' + (offR||'').replace(/\'/g,"\\\'") + '\')" title="Click để chỉnh sửa">';
+                    h += '<div style="background:#ffcdd2;color:#b71c1c;padding:2px 4px;border-radius:4px;font-size:10px;font-weight:700;border:1px solid #ef9a9a">OFF</div>';
+                    if (offR) h += '<div style="font-size:9px;color:#bf360c;margin-top:2px;font-weight:600;background:#fff8e1;padding:2px 5px;border-radius:4px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + offR.replace(/"/g,'&quot;') + '"><i class="fas fa-comment-dots" style="font-size:8px;margin-right:2px"></i>' + offR + '</div>';
                     h += '</td>';
                 }
             } else {
@@ -8035,7 +8828,6 @@ function renderRegTable(regs, monday) {
 
     h += '</tbody></table></div>';
 
-    // Summary
     var regCount = Object.keys(empIds).length;
     var totalEmps = activeEmps.length;
     h += '<div style="margin-top:8px;font-size:12px;color:#555;display:flex;gap:16px;align-items:center">';
@@ -8049,25 +8841,11 @@ function renderRegTable(regs, monday) {
     document.getElementById('regTableContainer').innerHTML = h;
 }
 
-function regWeekPrev() {
-    var picker = document.getElementById('regWeekPicker');
-    var d = new Date(picker.value || new Date());
-    d.setDate(d.getDate() - 7);
-    picker.value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-    loadRegistrationView();
-}
-
-function regWeekNext() {
-    var picker = document.getElementById('regWeekPicker');
-    var d = new Date(picker.value || new Date());
-    d.setDate(d.getDate() + 7);
-    picker.value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-    loadRegistrationView();
-}
+// regWeekPrev/regWeekNext removed — replaced by flexible date pickers
 
 function refreshRegistrations() {
     loadRegistrationView();
-    showSuccess('Đã tải lại dữ liệu đăng ký ca');
+    showSuccess('Đã tải lại đăng ký ca 已重新載入');
 }
 
 // ===== BOSS EDIT REGISTRATION =====
@@ -8109,6 +8887,13 @@ function openRegEdit(empId, dateKey, startStr, endStr, offReason) {
     h += '<div style="margin-bottom:14px;padding:10px;background:#fff8e1;border-radius:8px;border:1px solid #ffe082">';
     h += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px"><input type="checkbox" id="regEditOff" onchange="regEditToggleOff()"> Đặt nghỉ (OFF)</label>';
     h += '<input type="text" id="regEditOffReason" placeholder="Lý do nghỉ (tùy chọn)" style="margin-top:6px;width:100%;padding:6px;border:1px solid #ddd;border-radius:6px;font-size:12px;display:none">';
+    h += '</div>';
+    
+    // Reset edit count button
+    h += '<div style="margin-bottom:10px;padding:8px;background:#e3f2fd;border-radius:8px;border:1px solid #90caf9;display:flex;align-items:center;gap:8px">';
+    h += '<i class="fas fa-redo" style="color:#1565c0;font-size:12px"></i>';
+    h += '<span style="font-size:12px;color:#1565c0">NV hết lượt sửa?</span>';
+    h += '<button onclick="bossResetRegEdit(\'' + empId + '\')" style="margin-left:auto;background:#1565c0;color:white;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:11px;font-weight:600">Reset lượt sửa</button>';
     h += '</div>';
     
     // Actions
@@ -8177,7 +8962,7 @@ function regEditToggleOff() {
 function regEditSave() {
     var empId = regEditState.empId;
     var dateKey = regEditState.dateKey;
-    var weekKey = getWeekKeyFromDate(getMondayOfWeek(dateKey));
+    var weekKey = regGetISO('regStartDate') + '_' + regGetISO('regEndDate');
     var isOff = document.getElementById('regEditOff').checked;
     var offReason = document.getElementById('regEditOffReason').value.trim();
     
@@ -8202,7 +8987,7 @@ function regEditSave() {
         shiftsJson: JSON.stringify(shifts)
     }, function(res) {
         if (!res.success) { alert('Lỗi: ' + (res.error || 'Unknown')); return; }
-        showSuccess('Đã cập nhật đăng ký ca cho ' + empId);
+        showSuccess('Đã cập nhật 已更新 ' + empId);
         closeRegEdit();
         loadRegistrationView();
     });
@@ -8212,7 +8997,7 @@ function regEditDelete() {
     if (!confirm('Xóa đăng ký ca ngày này?')) return;
     var empId = regEditState.empId;
     var dateKey = regEditState.dateKey;
-    var weekKey = getWeekKeyFromDate(getMondayOfWeek(dateKey));
+    var weekKey = regGetISO('regStartDate') + '_' + regGetISO('regEndDate');
     
     portalApiCall({
         action: 'bossEditRegistration',
@@ -8223,7 +9008,7 @@ function regEditDelete() {
         shiftsJson: '[]'
     }, function(res) {
         if (!res.success) { alert('Lỗi: ' + (res.error || 'Unknown')); return; }
-        showSuccess('Đã xóa đăng ký');
+        showSuccess('Đã xóa đăng ký 已刪除登記');
         closeRegEdit();
         loadRegistrationView();
     });
@@ -8234,19 +9019,61 @@ function closeRegEdit() {
     if (m) m.remove();
 }
 
+function deleteAllRegForEmp(empId, empName) {
+    if (!confirm('Xóa tất cả đăng ký ca của ' + empName + ' trong khoảng thời gian này?\n刪除該員工所有登記？')) return;
+    var weekKey = regGetISO('regStartDate') + '_' + regGetISO('regEndDate');
+    
+    document.getElementById('regTableContainer').innerHTML = '<div style="text-align:center;padding:20px;color:#999"><i class="fas fa-spinner fa-spin"></i> Đang xóa đăng ký...</div>';
+    portalApiCall({
+        action: 'deleteAllRegistration',
+        bossPassword: empPortalConfig.bossPassword,
+        empId: empId,
+        weekKey: weekKey
+    }, function(res) {
+        if (!res.success) { alert('Lỗi: ' + (res.error || 'Unknown')); loadRegistrationView(); return; }
+        showSuccess('Đã xóa đăng ký của ' + empName + ' 已刪除登記');
+        // Re-render using cached data minus deleted emp, then refresh from API in background
+        if (window._lastRegData) {
+            var filtered = window._lastRegData.filter(function(r) { return r.empId !== empId; });
+            var sISO = regGetISO('regStartDate'), eISO = regGetISO('regEndDate');
+            renderRegTableFlex(filtered, new Date(sISO + 'T00:00:00'), new Date(eISO + 'T00:00:00'));
+        }
+        // Also refresh from API in background
+        setTimeout(function() { loadRegistrationView(); }, 500);
+    });
+}
+
+function bossResetRegEdit(empId) {
+    var weekKey = regGetISO('regStartDate') + '_' + regGetISO('regEndDate');
+    var emp = employees.find(function(e){return e.id===empId;});
+    var empName = emp ? emp.name : empId;
+    if (!confirm('Reset lượt chỉnh sửa cho ' + empName + '?\nNhân viên sẽ được sửa lại 2 lần.')) return;
+    
+    portalApiCall({
+        action: 'resetRegEdit',
+        bossPassword: empPortalConfig.bossPassword,
+        empId: empId,
+        weekKey: weekKey
+    }, function(res) {
+        if (!res.success) { alert('Lỗi: ' + (res.error || 'Unknown')); return; }
+        showSuccess('Đã reset lượt sửa cho ' + empName + ' 已重置編輯次數');
+        closeRegEdit();
+    });
+}
+
 function applyRegToSchedule() {
-    var picker = document.getElementById('regWeekPicker');
-    if (!picker.value) { alert('Vui lòng chọn tuần!'); return; }
+    var startEl = document.getElementById('regStartDate');
+    var endEl = document.getElementById('regEndDate');
+    if (!startEl.value || !endEl.value) { alert('Vui lòng chọn khoảng thời gian! 請選擇時段'); return; }
+    var periodKey = startEl.value + '_' + endEl.value;
+    var sd = new Date(startEl.value), ed = new Date(endEl.value);
 
-    var monday = getMondayOfWeek(picker.value);
-    var weekKey = getWeekKeyFromDate(monday);
-
-    if (!confirm('Chuyển lịch đăng ký ca tuần ' + monday.getDate() + '/' + (monday.getMonth()+1) + ' sang tab Lịch làm?\nCác ca hiện tại trong tuần sẽ bị ghi đè bởi đăng ký của NV.')) return;
+    if (!confirm('Chuyển lịch đăng ký ca ' + sd.getDate() + '/' + (sd.getMonth()+1) + ' - ' + ed.getDate() + '/' + (ed.getMonth()+1) + ' sang tab Lịch làm?\nCác ca hiện tại sẽ bị ghi đè bởi đăng ký của NV.')) return;
 
     portalApiCall({
         action: 'getRegistrations',
         bossPassword: empPortalConfig.bossPassword,
-        weekKey: weekKey
+        weekKey: periodKey
     }, function(res) {
         if (!res.success) { alert('Lỗi: ' + (res.error || '')); return; }
 
@@ -8256,7 +9083,7 @@ function applyRegToSchedule() {
         regs.forEach(function(r) {
             r.start = normalizeTime(r.start);
             r.end = normalizeTime(r.end);
-            if (!r.start || r.start === '') return; // Skip OFF days
+            if (!r.start || r.start === '') return;
             var key = normalizeDate(r.date) + '-' + r.empId;
             schedules[key] = {start: r.start, end: r.end};
             count++;
@@ -8264,12 +9091,12 @@ function applyRegToSchedule() {
 
         saveData();
 
-        // Switch to schedule tab and set the week
-        document.getElementById('scheduleWeek').value = picker.value;
+        // Switch to schedule tab
+        document.getElementById('scheduleWeek').value = startEl.value;
         var schedBtn = document.querySelector('.tab-button[onclick*="schedule"]');
         if (schedBtn) switchTab('schedule', schedBtn);
 
-        showSuccess('Đã chuyển ' + count + ' ca đăng ký sang lịch làm!');
+        showSuccess('Đã chuyển 已轉入 ' + count + ' ca');
     });
 }
 
@@ -8338,7 +9165,7 @@ function exportEmployeesExcel(){_ensureXLSX(function(){
         {wch:16},{wch:18},{wch:18}];
     var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws2,'Nhân viên');
     _downloadXLSX(wb,'NhanVien_'+new Date().toISOString().slice(0,10)+'.xlsx');
-    showSuccess('Đã tải Excel danh sách nhân viên!');
+    showSuccess('Đã tải Excel 已下載員工名單');
 });}
 
 // 2. Export Schedule — fix biến schedDeptView
@@ -8375,12 +9202,12 @@ function exportScheduleExcel(){_ensureXLSX(function(){
     ws['!cols']=cols;
     var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,deptName);
     _downloadXLSX(wb,'LichLam_'+deptName+'_'+mi+'.xlsx');
-    showSuccess('Đã tải Excel lịch làm '+deptName+'!');
+    showSuccess('Đã tải Excel 已下載排班 '+deptName);
 });}
 
 // 3. Export Registration — lấy từ DOM thay vì schedules
 function exportRegistrationExcel(){_ensureXLSX(function(){
-    var wp=document.getElementById('regWeekPicker').value;
+    var wp=regGetISO('regStartDate')+'_'+regGetISO('regEndDate');
     if(!wp){showError('Chọn tuần trước');return;}
     // Scrape from DOM table in regTableContainer
     var tbl=document.querySelector('#regTableContainer table');
@@ -8400,7 +9227,7 @@ function exportRegistrationExcel(){_ensureXLSX(function(){
     ws['!cols']=cols;
     var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Đăng ký ca');
     _downloadXLSX(wb,'DangKyCa_'+wp+'.xlsx');
-    showSuccess('Đã tải Excel đăng ký ca!');
+    showSuccess('Đã tải Excel 已下載登記班');
 });}
 
 // 4a. Export Attendance (sub-tabs) — tính toán trực tiếp từ data
@@ -8526,7 +9353,7 @@ function exportAttendanceExcel(){_ensureXLSX(function(){
     XLSX.utils.book_append_sheet(wb,ws3s,'Quy đổi');
 
     _downloadXLSX(wb,'ChamCong_'+mi+'.xlsx');
-    showSuccess('Đã tải Excel chấm công!');
+    showSuccess('Đã tải Excel 已下載考勤');
 });}
 
 // 4b. Export Payroll — tính toán trực tiếp từ data, không scrape DOM
@@ -8657,7 +9484,7 @@ function exportPayrollExcel(){_ensureXLSX(function(){
     XLSX.utils.book_append_sheet(wb,ws_sum,'Tổng hợp');
 
     _downloadXLSX(wb,'BangLuong_'+mi+'.xlsx');
-    showSuccess('Đã tải Excel bảng lương!');
+    showSuccess('Đã tải Excel 已下載薪資表');
 });}
 </script>
 </body>
