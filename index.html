@@ -9065,8 +9065,11 @@ function applyRegToSchedule() {
     var startEl = document.getElementById('regStartDate');
     var endEl = document.getElementById('regEndDate');
     if (!startEl.value || !endEl.value) { alert('Vui lòng chọn khoảng thời gian! 請選擇時段'); return; }
-    var periodKey = startEl.value + '_' + endEl.value;
-    var sd = new Date(startEl.value), ed = new Date(endEl.value);
+    var sISO = regGetISO('regStartDate');
+    var eISO = regGetISO('regEndDate');
+    if (!sISO || !eISO) { alert('Ngày không hợp lệ!'); return; }
+    var periodKey = sISO + '_' + eISO;
+    var sd = new Date(sISO + 'T00:00:00'), ed = new Date(eISO + 'T00:00:00');
 
     if (!confirm('Chuyển lịch đăng ký ca ' + sd.getDate() + '/' + (sd.getMonth()+1) + ' - ' + ed.getDate() + '/' + (ed.getMonth()+1) + ' sang tab Lịch làm?\nCác ca hiện tại sẽ bị ghi đè bởi đăng ký của NV.')) return;
 
@@ -9079,24 +9082,43 @@ function applyRegToSchedule() {
 
         var regs = res.registrations || [];
         var count = 0;
+        var offCount = 0;
 
         regs.forEach(function(r) {
-            r.start = normalizeTime(r.start);
-            r.end = normalizeTime(r.end);
-            if (!r.start || r.start === '') return;
-            var key = normalizeDate(r.date) + '-' + r.empId;
-            schedules[key] = {start: r.start, end: r.end};
+            var dateISO = normalizeDate(r.date);
+            if (!dateISO || dateISO.indexOf('NaN') >= 0) return;
+            var empId = String(r.empId).trim();
+            if (!empId) return;
+
+            // Find which dept this employee belongs to
+            var emp = employees.find(function(e) { return e.id === empId; });
+            var dept = emp ? emp.dept : 'Phục vụ';
+            var key = dateISO + '-' + empId;
+
+            // Handle OFF registration
+            if (r.offReason || (!r.start && !r.end)) {
+                schedules[key] = {start: '', end: ''};
+                offCount++;
+                return;
+            }
+
+            var startTime = normalizeTime(r.start);
+            var endTime = normalizeTime(r.end);
+            if (!startTime) return;
+
+            schedules[key] = {start: startTime, end: endTime};
             count++;
         });
 
         saveData();
 
-        // Switch to schedule tab
-        document.getElementById('scheduleWeek').value = startEl.value;
+        // Switch to schedule tab with correct date
+        document.getElementById('scheduleWeek').value = sISO;
         var schedBtn = document.querySelector('.tab-button[onclick*="schedule"]');
         if (schedBtn) switchTab('schedule', schedBtn);
+        setTimeout(function() { loadSchedule(); }, 200);
 
-        showSuccess('Đã chuyển 已轉入 ' + count + ' ca');
+        showSuccess('Đã chuyển 已轉入 ' + count + ' ca' + (offCount > 0 ? ' + ' + offCount + ' ngày nghỉ' : ''));
     });
 }
 
