@@ -8690,7 +8690,10 @@ function toggleRegLock() {
     var startEl = document.getElementById('regStartDate');
     var endEl = document.getElementById('regEndDate');
     if (!startEl.value || !endEl.value) { alert('Chọn khoảng thời gian trước'); return; }
-    var periodKey = startEl.value + '_' + endEl.value;
+    var sISO = regGetISO('regStartDate');
+    var eISO = regGetISO('regEndDate');
+    if (!sISO || !eISO) { alert('Ngày không hợp lệ!'); return; }
+    var periodKey = sISO + '_' + eISO;
     var newLock = currentRegLocked ? '0' : '1';
     var msg = currentRegLocked ? 'Mở khóa đăng ký?' : 'Khóa đăng ký? Nhân viên sẽ không thể đăng ký hoặc chỉnh sửa.';
     if (!confirm(msg)) return;
