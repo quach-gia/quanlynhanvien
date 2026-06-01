@@ -1062,9 +1062,10 @@ function _mergeCloudData(cloudData){
         });
     }
     // Merge key-value data stores
-    // Schedules: local is authoritative — do NOT merge from cloud (xóa ô sẽ bị cloud ghi đè)
-    // Cloud schedules only used when loading fresh (no localStorage)
-    //if(cloudData.schedules)schedules=mergeObj(schedules,cloudData.schedules,'schedules');
+    // Schedules: merge from cloud — new keys from cloud are added, deleted keys are protected by _deletedKeys
+    if(cloudData.schedules)schedules=mergeObj(schedules,cloudData.schedules,'schedules');
+    if(cloudData.kitchenLabels)kitchenLabels=mergeObj(kitchenLabels,cloudData.kitchenLabels,'kitchenLabels');
+    if(cloudData.scheduleDepts)scheduleDepts=mergeObj(scheduleDepts,cloudData.scheduleDepts,'scheduleDepts');
     if(cloudData.attendanceData)attendanceData=mergeObj(attendanceData,cloudData.attendanceData,'attendanceData');
     if(cloudData.attendanceNotes)attendanceNotes=mergeObj(attendanceNotes,cloudData.attendanceNotes,'attendanceNotes');
     if(cloudData.attTimesheetData)attTimesheetData=mergeObj(attTimesheetData,cloudData.attTimesheetData,'attTimesheetData');
@@ -1143,37 +1144,80 @@ function _doCloudSave(jsonStr){
     _cloudSaving=true;
     _cloudRetryData=null;
     _updateSyncStatus('saving');
-    fetch(CLOUD_SYNC_URL,{
-        method:'POST',
-        headers:{'Content-Type':'text/plain'},
-        body:JSON.stringify({action:'saveData',password:CLOUD_SYNC_PWD,data:jsonStr})
-    }).then(function(r){return r.json();}).then(function(res){
-        _cloudSaving=false;
-        if(res.success){
-            _lastCloudSave=res.savedAt||new Date().toLocaleString('vi-VN');
-            _cloudDirty=false;
-            _updateSyncStatus('saved');
-            _deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');
-            console.log('Cloud saved:',res.message);
-        }else{
-            _updateSyncStatus('error',res.error);
-            console.warn('Cloud save failed:',res.error);
-        }
-        if(_cloudRetryData){
-            var retryData=_cloudRetryData;
-            _cloudRetryData=null;
-            _doCloudSave(retryData);
-        }
-    }).catch(function(err){
-        _cloudSaving=false;
-        _updateSyncStatus('error',err.toString());
-        console.warn('Cloud save error:',err);
-        if(_cloudRetryData){
-            var retryData=_cloudRetryData;
-            _cloudRetryData=null;
-            setTimeout(function(){_doCloudSave(retryData);},2000);
-        }
-    });
+    // Google Apps Script redirects POST with 302 (drops body)
+    // Must use GET with chunked data
+    var CHUNK_SIZE=5000;
+    var encoded=encodeURIComponent(jsonStr);
+    // If small enough, send in one GET request
+    if(encoded.length<CHUNK_SIZE){
+        fetch(CLOUD_SYNC_URL+'?action=saveData&password='+CLOUD_SYNC_PWD+'&data='+encoded,{redirect:'follow'})
+        .then(function(r){return r.json();})
+        .then(function(res){
+            _cloudSaving=false;
+            if(res.success){
+                _lastCloudSave=res.savedAt||new Date().toLocaleString('vi-VN');
+                _cloudDirty=false;
+                _updateSyncStatus('saved');
+                _deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');
+                console.log('Cloud saved:',res.message);
+            }else{
+                _updateSyncStatus('error',res.error);
+                console.warn('Cloud save error:',res.error);
+            }
+            if(_cloudRetryData){var rd=_cloudRetryData;_cloudRetryData=null;_doCloudSave(rd);}
+        }).catch(function(err){
+            _cloudSaving=false;
+            _updateSyncStatus('error',err.toString());
+            console.warn('Cloud save failed:',err);
+            if(_cloudRetryData){var rd=_cloudRetryData;_cloudRetryData=null;setTimeout(function(){_doCloudSave(rd);},5000);}
+        });
+        return;
+    }
+    // Large data: split into chunks and send sequentially
+    var chunks=[];
+    for(var i=0;i<jsonStr.length;i+=CHUNK_SIZE){
+        chunks.push(jsonStr.substring(i,i+CHUNK_SIZE));
+    }
+    var total=chunks.length;
+    var sent=0;
+    _updateSyncStatus('saving');
+    function sendChunk(idx){
+        var url=CLOUD_SYNC_URL+'?action=saveDataChunk&password='+CLOUD_SYNC_PWD+'&chunkIndex='+idx+'&totalChunks='+total+'&data='+encodeURIComponent(chunks[idx]);
+        fetch(url,{redirect:'follow'}).then(function(r){return r.json();}).then(function(res){
+            if(!res.success){
+                _cloudSaving=false;
+                _updateSyncStatus('error','Chunk '+idx+' failed: '+res.error);
+                console.warn('Chunk save error:',res.error);
+                return;
+            }
+            sent++;
+            if(sent===total){
+                // All chunks sent, trigger assembly
+                fetch(CLOUD_SYNC_URL+'?action=assembleChunks&password='+CLOUD_SYNC_PWD+'&totalChunks='+total,{redirect:'follow'})
+                .then(function(r){return r.json();}).then(function(ar){
+                    _cloudSaving=false;
+                    if(ar.success){
+                        _lastCloudSave=ar.savedAt||new Date().toLocaleString('vi-VN');
+                        _cloudDirty=false;
+                        _updateSyncStatus('saved');
+                        _deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');
+                        console.log('Cloud saved (chunked):',ar.message);
+                    }else{
+                        _updateSyncStatus('error',ar.error);
+                    }
+                    if(_cloudRetryData){var rd=_cloudRetryData;_cloudRetryData=null;_doCloudSave(rd);}
+                }).catch(function(err){
+                    _cloudSaving=false;_updateSyncStatus('error',err.toString());
+                });
+            }else{
+                // Send next chunk
+                sendChunk(idx+1);
+            }
+        }).catch(function(err){
+            _cloudSaving=false;_updateSyncStatus('error','Chunk '+idx+': '+err.toString());
+        });
+    }
+    sendChunk(0);
 }
 // Show browser warning if there are unsaved cloud changes
 // NOTE: sync XHR doesn't follow GAS 302 redirects, sendBeacon has 64KB limit (data ~180KB)
