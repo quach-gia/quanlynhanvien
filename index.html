@@ -432,7 +432,7 @@ td.cell-selected{outline:3px solid #ff6f00 !important;outline-offset:-2px;box-sh
                 <button class="btn btn-secondary btn-sm" onclick="attNext()"><i class="fas fa-chevron-right"></i></button>
             </div>
             <div class="toolbar-group"><button class="btn btn-secondary btn-sm" onclick="exportAttendance()"><i class="fas fa-download"></i> Xuất CSV 匯出</button><button class="btn btn-sm" onclick="exportAttendanceExcel()" style="background:#1b5e20;color:white;margin-left:4px"><i class="fas fa-file-excel"></i> Excel</button></div>
-            <div class="toolbar-group"><button class="btn btn-sm" onclick="bulkConfirmAttendance()" style="background:#4caf50;color:white"><i class="fas fa-check-double"></i> Xác nhận 確認</button><button class="btn btn-sm" onclick="bulkUnconfirmAttendance()" style="background:#ef5350;color:white;margin-left:4px"><i class="fas fa-times-circle"></i> Hủy xác nhận 取消</button><button class="btn btn-sm btn-outline" onclick="clearAttSelection()" style="margin-left:4px"><i class="fas fa-eraser"></i> Bỏ chọn</button><span id="attSelCount" style="font-size:11px;font-weight:600;color:#1565c0;margin-left:6px"></span></div>
+            <div class="toolbar-group"><button class="btn btn-sm" onclick="syncFromBossConfirm()" style="background:#8B0000;color:white" title="Kéo giờ Boss đã XN trên điện thoại vào QLNV để tính lương"><i class="fas fa-cloud-download-alt"></i> Đồng bộ BossConfirm 同步</button><button class="btn btn-sm" onclick="bulkConfirmAttendance()" style="background:#4caf50;color:white;margin-left:4px"><i class="fas fa-check-double"></i> Xác nhận 確認</button><button class="btn btn-sm" onclick="bulkUnconfirmAttendance()" style="background:#ef5350;color:white;margin-left:4px"><i class="fas fa-times-circle"></i> Hủy xác nhận 取消</button><button class="btn btn-sm btn-outline" onclick="clearAttSelection()" style="margin-left:4px"><i class="fas fa-eraser"></i> Bỏ chọn</button><span id="attSelCount" style="font-size:11px;font-weight:600;color:#1565c0;margin-left:6px"></span></div>
         </div>
         <div class="att-subtabs" id="attSubTabs">
             <button class="att-subtab active" onclick="setAttSubView('schedule')"><i class="fas fa-calendar-check"></i> Lịch làm 排班</button>
@@ -1070,6 +1070,7 @@ function _mergeCloudData(cloudData){
     if(cloudData.attendanceNotes)attendanceNotes=mergeObj(attendanceNotes,cloudData.attendanceNotes,'attendanceNotes');
     if(cloudData.attTimesheetData)attTimesheetData=mergeObj(attTimesheetData,cloudData.attTimesheetData,'attTimesheetData');
     if(cloudData.attConfirmations)attConfirmations=mergeObj(attConfirmations,cloudData.attConfirmations,'attConfirmations');
+    if(cloudData.attBossConfirmations)attBossConfirmations=mergeObj(attBossConfirmations,cloudData.attBossConfirmations,'attBossConfirmations');
     if(cloudData.attConvertOverrides)attConvertOverrides=mergeObj(attConvertOverrides,cloudData.attConvertOverrides,'attConvertOverrides');
     if(cloudData.payrollOverrides)payrollOverrides=mergeObj(payrollOverrides,cloudData.payrollOverrides,'payrollOverrides');
     if(cloudData.payrollExclude)payrollExclude=mergeObj(payrollExclude,cloudData.payrollExclude,'payrollExclude');
@@ -1098,7 +1099,7 @@ function _buildDataObj(){
         attendanceData:attendanceData,
         attendanceNotes:attendanceNotes,
         attendanceRaw:attendanceRaw,
-        attTimesheetData:attTimesheetData,attConfirmations:attConfirmations,
+        attTimesheetData:attTimesheetData,attConfirmations:attConfirmations,attBossConfirmations:attBossConfirmations,
         attConvertOverrides:attConvertOverrides,
         payrollOverrides:payrollOverrides,
         payrollExclude:payrollExclude,
@@ -1136,88 +1137,54 @@ function _scheduleCloudSave(jsonStr){
 }
 function _doCloudSave(jsonStr){
     if(!CLOUD_SYNC_URL)return;
-    if(_cloudSaving){
-        _cloudRetryData=jsonStr;
-        console.log('Cloud save queued (already saving)');
-        return;
-    }
-    _cloudSaving=true;
-    _cloudRetryData=null;
+    if(_cloudSaving){_cloudRetryData=jsonStr;return;}
+    _cloudSaving=true;_cloudRetryData=null;
     _updateSyncStatus('saving');
-    // Google Apps Script redirects POST with 302 (drops body)
-    // Must use GET with chunked data
-    var CHUNK_SIZE=5000;
-    var encoded=encodeURIComponent(jsonStr);
-    // If small enough, send in one GET request
-    if(encoded.length<CHUNK_SIZE){
-        fetch(CLOUD_SYNC_URL+'?action=saveData&password='+CLOUD_SYNC_PWD+'&data='+encoded,{redirect:'follow'})
-        .then(function(r){return r.json();})
-        .then(function(res){
-            _cloudSaving=false;
-            if(res.success){
-                _lastCloudSave=res.savedAt||new Date().toLocaleString('vi-VN');
-                _cloudDirty=false;
-                _updateSyncStatus('saved');
-                _deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');
-                console.log('Cloud saved:',res.message);
-            }else{
-                _updateSyncStatus('error',res.error);
-                console.warn('Cloud save error:',res.error);
-            }
-            if(_cloudRetryData){var rd=_cloudRetryData;_cloudRetryData=null;_doCloudSave(rd);}
-        }).catch(function(err){
-            _cloudSaving=false;
-            _updateSyncStatus('error',err.toString());
-            console.warn('Cloud save failed:',err);
-            if(_cloudRetryData){var rd=_cloudRetryData;_cloudRetryData=null;setTimeout(function(){_doCloudSave(rd);},5000);}
-        });
-        return;
-    }
-    // Large data: split into chunks and send sequentially
+    // Split into chunks (Google Apps Script GET URL limit ~5500 chars for data)
+    var CHUNK=4000;
     var chunks=[];
-    for(var i=0;i<jsonStr.length;i+=CHUNK_SIZE){
-        chunks.push(jsonStr.substring(i,i+CHUNK_SIZE));
-    }
+    for(var i=0;i<jsonStr.length;i+=CHUNK)chunks.push(jsonStr.substring(i,i+CHUNK));
     var total=chunks.length;
-    var sent=0;
-    _updateSyncStatus('saving');
-    function sendChunk(idx){
+    if(total<=1){
+        // Small data: single GET
+        fetch(CLOUD_SYNC_URL+'?action=saveData&password='+CLOUD_SYNC_PWD+'&data='+encodeURIComponent(jsonStr),{redirect:'follow'})
+        .then(function(r){return r.json();}).then(function(res){
+            _cloudSaving=false;
+            if(res.success){_lastCloudSave=res.savedAt||'';_cloudDirty=false;_updateSyncStatus('saved');_deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');console.log('Cloud saved');}
+            else{_updateSyncStatus('error',res.error);}
+            if(_cloudRetryData){var rd=_cloudRetryData;_cloudRetryData=null;_doCloudSave(rd);}
+        }).catch(function(err){_cloudSaving=false;_updateSyncStatus('error',err.toString());});
+        return;
+    }
+    // Large data: parallel chunks then assemble
+    var done=0,failed=false;
+    var PARALLEL=5;
+    var queue=chunks.map(function(c,idx){return idx;});
+    function onChunkDone(){
+        done++;
+        _updateSyncStatus('saving','Lưu '+done+'/'+total);
+        if(done===total&&!failed){
+            fetch(CLOUD_SYNC_URL+'?action=assembleChunks&password='+CLOUD_SYNC_PWD+'&totalChunks='+total,{redirect:'follow'})
+            .then(function(r){return r.json();}).then(function(ar){
+                _cloudSaving=false;
+                if(ar.success){_lastCloudSave=ar.savedAt||'';_cloudDirty=false;_updateSyncStatus('saved');_deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');console.log('Cloud saved ('+total+' chunks)');}
+                else{_updateSyncStatus('error',ar.error);}
+                if(_cloudRetryData){var rd=_cloudRetryData;_cloudRetryData=null;_doCloudSave(rd);}
+            }).catch(function(err){_cloudSaving=false;_updateSyncStatus('error',err.toString());});
+        }
+    }
+    function sendNext(){
+        if(queue.length===0||failed)return;
+        var idx=queue.shift();
         var url=CLOUD_SYNC_URL+'?action=saveDataChunk&password='+CLOUD_SYNC_PWD+'&chunkIndex='+idx+'&totalChunks='+total+'&data='+encodeURIComponent(chunks[idx]);
         fetch(url,{redirect:'follow'}).then(function(r){return r.json();}).then(function(res){
-            if(!res.success){
-                _cloudSaving=false;
-                _updateSyncStatus('error','Chunk '+idx+' failed: '+res.error);
-                console.warn('Chunk save error:',res.error);
-                return;
-            }
-            sent++;
-            if(sent===total){
-                // All chunks sent, trigger assembly
-                fetch(CLOUD_SYNC_URL+'?action=assembleChunks&password='+CLOUD_SYNC_PWD+'&totalChunks='+total,{redirect:'follow'})
-                .then(function(r){return r.json();}).then(function(ar){
-                    _cloudSaving=false;
-                    if(ar.success){
-                        _lastCloudSave=ar.savedAt||new Date().toLocaleString('vi-VN');
-                        _cloudDirty=false;
-                        _updateSyncStatus('saved');
-                        _deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');
-                        console.log('Cloud saved (chunked):',ar.message);
-                    }else{
-                        _updateSyncStatus('error',ar.error);
-                    }
-                    if(_cloudRetryData){var rd=_cloudRetryData;_cloudRetryData=null;_doCloudSave(rd);}
-                }).catch(function(err){
-                    _cloudSaving=false;_updateSyncStatus('error',err.toString());
-                });
-            }else{
-                // Send next chunk
-                sendChunk(idx+1);
-            }
+            if(!res.success&&!failed){failed=true;_cloudSaving=false;_updateSyncStatus('error','Chunk '+idx+': '+res.error);return;}
+            onChunkDone();sendNext();
         }).catch(function(err){
-            _cloudSaving=false;_updateSyncStatus('error','Chunk '+idx+': '+err.toString());
+            if(!failed){failed=true;_cloudSaving=false;_updateSyncStatus('error','Chunk '+idx+': '+err);}
         });
     }
-    sendChunk(0);
+    for(var p=0;p<Math.min(PARALLEL,total);p++)sendNext();
 }
 // Show browser warning if there are unsaved cloud changes
 // NOTE: sync XHR doesn't follow GAS 302 redirects, sendBeacon has 64KB limit (data ~180KB)
@@ -1330,7 +1297,7 @@ function loadData(){
         if(data.TASK_LIST_SV)TASK_LIST_SV=data.TASK_LIST_SV;
         if(data.employeeOrder)employeeOrder=data.employeeOrder;
         if(data.attendanceRaw)attendanceRaw=data.attendanceRaw;
-        if(data.attTimesheetData)attTimesheetData=data.attTimesheetData;if(data.attConfirmations)attConfirmations=data.attConfirmations;
+        if(data.attTimesheetData)attTimesheetData=data.attTimesheetData;if(data.attConfirmations)attConfirmations=data.attConfirmations;if(data.attBossConfirmations)attBossConfirmations=data.attBossConfirmations;
         if(data.attConvertOverrides)attConvertOverrides=data.attConvertOverrides;
         if(data.payrollOverrides)payrollOverrides=data.payrollOverrides;
         if(data.payrollExclude)payrollExclude=data.payrollExclude;
@@ -4323,6 +4290,163 @@ function refreshAttSelection(){
     if(badge)badge.textContent=cnt>0?cnt+' ô':'';
 }
 function clearAttSelection(){attSelectedCells={};refreshAttSelection();}
+// ========== SYNC FROM BOSSCONFIRM ==========
+// Keo gio xac nhan tu BossConfirm (Google Sheet ConfirmedAttendance) ve attTimesheetData
+// de tinh luong. Goi action=getConfirmedAttendance, parse tung record, group theo
+// (date, empId), build segments, update attTimesheetData[dk].
+function _parseTimeStrBC(s){
+    if(!s)return '';
+    s=String(s).trim();
+    var m=s.match(/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/);
+    if(m)return String(parseInt(m[1],10)).padStart(2,'0')+':'+String(parseInt(m[2],10)).padStart(2,'0');
+    m=s.match(/\b(\d{2}):(\d{2}):(\d{2})\b/);
+    if(m)return String(parseInt(m[1],10)).padStart(2,'0')+':'+String(parseInt(m[2],10)).padStart(2,'0');
+    return '';
+}
+function _parseDateStrBC(s){
+    if(!s)return '';
+    s=String(s).trim();
+    if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.substring(0,10);
+    var d=new Date(s);
+    if(!isNaN(d.getTime())){
+        return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    }
+    return '';
+}
+function _hoursBetween(t1,t2){
+    if(!t1||!t2)return 0;
+    var a=t1.split(':'),b=t2.split(':');
+    var m1=parseInt(a[0])*60+parseInt(a[1]||0);
+    var m2=parseInt(b[0])*60+parseInt(b[1]||0);
+    var diff=m2-m1;
+    if(diff<0)diff+=24*60;
+    return Math.round(diff/60*100)/100;
+}
+function syncFromBossConfirm(){
+    var apiUrl=(typeof empPortalConfig!=='undefined'&&empPortalConfig.apiUrl)?empPortalConfig.apiUrl:'';
+    var pwd=(typeof empPortalConfig!=='undefined'&&empPortalConfig.bossPassword)?empPortalConfig.bossPassword:'quachgia2026';
+    if(!apiUrl){showError('Chưa cấu hình API URL');return;}
+
+    if(!confirm('Đồng bộ giờ Boss đã xác nhận từ BossConfirm sang đây?\n同步Boss已確認時間？\n\n✓ KHÔNG ghi đè giờ chấm công gốc — chỉ lưu giờ Boss XN riêng để tính lương.'))return;
+
+    showSuccess('⏳ Đang tải dữ liệu BossConfirm... 載入中...');
+    var url=apiUrl+'?action=getConfirmedAttendance&bossPassword='+encodeURIComponent(pwd);
+    fetch(url,{redirect:'follow'}).then(function(r){return r.json();}).then(function(res){
+        if(!res.success){showError('Lỗi: '+(res.error||'Không rõ'));return;}
+        var recs=res.records||res.data||[];
+        if(!recs.length){showSuccess('Không có dữ liệu xác nhận nào');return;}
+
+        // Group records by (date, empId). Backend ignore field `status` nen status duoc encode
+        // trong note prefix dang "[STATUS:xxx]". Cung dedup theo LATEST batch per (empId+date).
+        // Sort desc theo confirmedAt
+        recs.sort(function(a,b){
+            return new Date(b.confirmedAt||0).getTime()-new Date(a.confirmedAt||0).getTime();
+        });
+        var grouped={};
+        var latestTs={}, latestStatus={};
+        recs.forEach(function(item){
+            var ymd=_parseDateStrBC(item.date);
+            if(!ymd)return;
+            var gKey=ymd+'|'+item.empId;
+            var ts=new Date(item.confirmedAt||0).getTime();
+            // Decode status tu note prefix
+            var rawNote=String(item.note||'');
+            var noteStatus=null;var cleanNote=rawNote;
+            var sm=rawNote.match(/^\[STATUS:(\w+)\]/);
+            if(sm){noteStatus=sm[1];cleanNote=rawNote.substring(sm[0].length);}
+            var effectiveStatus=noteStatus||item.status||'confirmed';
+            var cIn=_parseTimeStrBC(item.confirmedIn);
+            var cOut=_parseTimeStrBC(item.confirmedOut);
+            // Skip legacy empty records (khong co STATUS prefix va khong co gio)
+            if(!noteStatus&&!cIn&&!cOut)return;
+            if(latestTs[gKey]===undefined){
+                latestTs[gKey]=ts;
+                latestStatus[gKey]=effectiveStatus;
+            }
+            if(latestStatus[gKey]==='deleted'||latestStatus[gKey]==='cancelled')return;
+            // Bo qua record cu hon batch latest (cach >10s)
+            if(latestTs[gKey]-ts>10000)return;
+            if(!grouped[gKey]){
+                grouped[gKey]={
+                    date:ymd,
+                    empId:item.empId,
+                    status:effectiveStatus,
+                    note:cleanNote,
+                    segments:[]
+                };
+            }
+            var sIdx=typeof item.shiftIndex==='number'?item.shiftIndex:grouped[gKey].segments.length;
+            grouped[gKey].segments[sIdx]={start:cIn,end:cOut};
+        });
+
+        // Apply vao attBossConfirmations (KHONG dung attTimesheetData de giu gio cham cong goc)
+        var updated=0,offCount=0,skipped=0,errors=[];
+        var nowISO=new Date().toISOString();
+        Object.keys(grouped).forEach(function(gk){
+            var g=grouped[gk];
+            // Loai bo undefined slot
+            g.segments=g.segments.filter(function(s){return !!s;});
+
+            // Tim dk theo schedule cua empId hom do
+            var sf=findScheduleForEmp(g.date,g.empId);
+            var dk=sf.dk;
+
+            if(g.status==='off'){
+                // OFF: chỉ ghi flag trong attBossConfirmations, KHONG dung gio cham cong goc
+                attBossConfirmations[dk]={
+                    status:'off',
+                    note:g.note||'OFF',
+                    checkin:'',checkout:'',hours:0,segments:[],
+                    syncedAt:nowISO
+                };
+                attConfirmations[dk]=true;
+                offCount++;
+                return;
+            }
+
+            if(g.segments.length===0||(!g.segments[0].start&&!g.segments[0].end)){
+                skipped++;
+                return;
+            }
+
+            // Tinh tong gio tu cac segment
+            var totalH=0;
+            g.segments.forEach(function(s){
+                if(s.start&&s.end)totalH+=_hoursBetween(s.start,s.end);
+            });
+            totalH=Math.round(totalH*100)/100;
+
+            var firstSeg=g.segments[0]||{};
+            var lastSeg=g.segments[g.segments.length-1]||{};
+
+            // LUU RIENG vao attBossConfirmations - KHONG dung attTimesheetData
+            attBossConfirmations[dk]={
+                status:g.status||'confirmed',
+                checkin:firstSeg.start||'',
+                checkout:lastSeg.end||firstSeg.end||'',
+                hours:totalH,
+                segments:g.segments,
+                note:g.note||'',
+                syncedAt:nowISO
+            };
+            attConfirmations[dk]=true;
+            updated++;
+        });
+
+        saveData();
+        if(typeof loadAttendance==='function')loadAttendance();
+        if(typeof loadPayroll==='function')loadPayroll();
+
+        var msg='✓ Đồng bộ xong: '+updated+' ngày cập nhật giờ';
+        if(offCount>0)msg+=', '+offCount+' OFF';
+        if(skipped>0)msg+=', '+skipped+' bỏ qua (không có giờ)';
+        showSuccess(msg);
+    }).catch(function(e){
+        console.error('Sync error:',e);
+        showError('Lỗi kết nối BossConfirm: '+e.message);
+    });
+}
+
 function bulkConfirmAttendance(){
     var keys=Object.keys(attSelectedCells);
     if(!keys.length){showSuccess('Chưa chọn ô nào! Hãy bôi chọn các ô trước 請先選擇格子');return;}
@@ -4479,6 +4603,10 @@ function nextTaskDay(){var d=document.getElementById('taskDate'),dt=new Date(d.v
 // ===== ATTENDANCE =====
 var attSubView='schedule'; // 'schedule','actual','convert'
 var attTimesheetData={};var attConfirmations={};
+// attBossConfirmations[dk]={checkin,checkout,hours,segments,note,syncedAt}
+// Gio Boss XN tu BossConfirm - LUU RIENG, KHONG ghi de attTimesheetData (gio cham cong goc)
+// Payroll uu tien dung gio nay neu co, fallback ve attTimesheetData
+var attBossConfirmations={};
 var qrSheetConfig={
     fileId:'1EM6yz3VVDnbqsKBDGSHF8w6vwFqB9BMNw3WIf-2iR9Q',
     sheetName:'ChamCong',
@@ -4861,22 +4989,53 @@ function buildAttActual(title,cls,emps,dateList,mi){
             var day=d.getDate();var dw=d.getDay();var we=dw===0||dw===6;
             var dk=schedKey(mi+'-'+String(day).padStart(2,'0'),emp.id,_attDept,emp._originalDept||emp.dept);
             var raw=attTimesheetData[dk];
+            var bc=attBossConfirmations[dk];
             var cin=raw?raw.checkin:'';var cout=raw?raw.checkout:'';
-            h+='<td style="padding:3px;text-align:center;font-size:10px;border:1px solid #eee;background:'+(we?'#f5f5f5':'#e3f2fd')+';color:#1565c0">'+cin+'</td>';
-            h+='<td style="padding:3px;text-align:center;font-size:10px;border:1px solid #eee;background:'+(we?'#f5f5f5':'#fce4ec')+';color:#c62828">'+cout+'</td>';
+            // Tooltip + indicator neu co Boss XN
+            var titleAttr='';var bossDot='';
+            if(bc){
+                if(bc.status==='off'){
+                    titleAttr=' title="Boss XN: NGHỈ (OFF)\n'+(bc.note||'')+'"';
+                    bossDot='<span style="position:absolute;top:0;right:1px;background:#757575;color:white;font-size:7px;padding:0 2px;border-radius:2px;line-height:1;font-weight:700">OFF</span>';
+                }else{
+                    titleAttr=' title="Boss XN: '+(bc.checkin||'--')+' → '+(bc.checkout||'--')+' = '+(bc.hours||0)+'h\nGiờ gốc: '+(cin||'--')+' → '+(cout||'--')+'"';
+                    bossDot='<span style="position:absolute;top:0;right:1px;background:#8B0000;color:white;font-size:7px;padding:0 2px;border-radius:2px;line-height:1;font-weight:700">B</span>';
+                }
+            }
+            h+='<td style="position:relative;padding:3px;text-align:center;font-size:10px;border:1px solid #eee;background:'+(we?'#f5f5f5':'#e3f2fd')+';color:#1565c0"'+titleAttr+'>'+cin+bossDot+'</td>';
+            h+='<td style="padding:3px;text-align:center;font-size:10px;border:1px solid #eee;background:'+(we?'#f5f5f5':'#fce4ec')+';color:#c62828"'+titleAttr+'>'+cout+'</td>';
         });
         h+='<td rowspan="2" style="padding:4px;border:1px solid #eee;font-weight:700;font-size:11px;background:#f0fff0;color:#2e7d32;text-align:center;vertical-align:middle" id="attTotalH_'+emp.id+'"></td>';
         h+='<td rowspan="2" style="padding:4px;border:1px solid #eee;font-weight:700;font-size:11px;background:#e3f2fd;color:#1565c0;text-align:center;vertical-align:middle" id="attTotalD_'+emp.id+'"></td>';
         h+='</tr>';
-        // Row 2: hours worked
+        // Row 2: hours worked - hien ca gio goc & gio Boss XN neu co
         h+='<tr>';
         dateList.forEach(function(d){
             var day=d.getDate();var dw=d.getDay();var we=dw===0||dw===6;
             var dk=schedKey(mi+'-'+String(day).padStart(2,'0'),emp.id,_attDept,emp._originalDept||emp.dept);
             var raw=attTimesheetData[dk];
+            var bc=attBossConfirmations[dk];
             var hrs=raw?raw.hours:0;
-            if(hrs>0){totalHrs+=hrs;totalDays++;}
-            h+='<td colspan="2" style="padding:3px;text-align:center;font-size:10px;border:1px solid #eee;background:'+(we?'#f5f5f5':(hrs>0?'#e8f5e9':''))+';font-weight:'+(hrs>0?'600':'400')+';color:'+(hrs>0?'#2e7d32':'#ccc')+'">'+(hrs>0?(hrs%1===0?String(hrs):hrs.toFixed(1)):'-')+'</td>';
+            // Lay gio thuc te tinh luong (uu tien Boss XN)
+            var effHrs=0;var isOff=false;var hasBoss=!!bc;
+            if(bc){
+                if(bc.status==='off'){isOff=true;effHrs=0;}
+                else{effHrs=bc.hours||0;}
+            }else{
+                effHrs=hrs;
+            }
+            if(effHrs>0){totalHrs+=effHrs;totalDays++;}
+            // Hien thi: neu co Boss XN khac gio goc -> show "gio_goc → gio_boss"
+            var cellText='';
+            if(isOff){cellText='<span style="color:#757575">OFF</span>';}
+            else if(hasBoss && bc.hours!==hrs && hrs>0){
+                cellText='<span style="color:#bbb;text-decoration:line-through;font-size:8px">'+(hrs%1===0?String(hrs):hrs.toFixed(1))+'</span> <span style="color:#8B0000;font-weight:700">'+(effHrs%1===0?String(effHrs):effHrs.toFixed(1))+'h</span>';
+            }
+            else if(effHrs>0){cellText=(effHrs%1===0?String(effHrs):effHrs.toFixed(1))+'h';}
+            else{cellText='-';}
+            var bg=we?'#f5f5f5':(isOff?'#eeeeee':(hasBoss?'#fff5f5':(effHrs>0?'#e8f5e9':'')));
+            var clr=isOff?'#757575':(hasBoss?'#8B0000':(effHrs>0?'#2e7d32':'#ccc'));
+            h+='<td colspan="2" style="padding:3px;text-align:center;font-size:10px;border:1px solid #eee;background:'+bg+';font-weight:'+(effHrs>0||isOff?'600':'400')+';color:'+clr+'">'+cellText+'</td>';
         });
         h+='</tr>';
         // Update totals via inline script won't work easily, compute here
@@ -5069,22 +5228,26 @@ function openAttDetail(empId,mi,mode){
     if(mode==='convert'){openAttDetailConvert(emp,mi,y,m,days,dayNames);return;}
     var h='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#333;color:white"><th style="padding:6px">Ngày</th><th>Thứ</th>';
     if(mode==='schedule')h+='<th>Ca làm</th><th>Giờ</th><th>Công</th>';
-    if(mode==='actual')h+='<th>Vào</th><th>Ra</th><th>Giờ thực</th>';
+    if(mode==='actual')h+='<th>Vào gốc</th><th>Ra gốc</th><th>Giờ gốc</th><th style="background:#8B0000">Boss XN<br>Vào→Ra</th><th style="background:#8B0000">Boss<br>Giờ</th><th style="background:#2e7d32">Tính lương</th>';
     h+='</tr></thead><tbody>';
-    var totalHrs=0,totalDays=0;
+    var totalHrs=0,totalDays=0,totalEffHrs=0;
     for(var i=1;i<=days;i++){
         var d=new Date(y,m-1,i);var dw=d.getDay();var we=dw===0||dw===6;
         var dk=mi+'-'+String(i).padStart(2,'0')+'-'+empId;
-        var sh=schedules[dk];var raw=attTimesheetData[dk];
+        var sh=schedules[dk];var raw=attTimesheetData[dk];var bc=attBossConfirmations[dk];
         var schedHrs=sh&&sh.start&&sh.end?getScheduleHours(empId,dk):0;
         var actualHrs=raw&&raw.hours?raw.hours:0;
-        var useHrs=mode==='actual'?actualHrs:schedHrs;
-        if(useHrs>0){totalHrs+=useHrs;
+        var bossHrs=(bc&&bc.status!=='off'&&bc.hours)?bc.hours:0;
+        var isOff=bc&&bc.status==='off';
+        // Gio dung cho luong: uu tien Boss XN
+        var effHrs=isOff?0:(bossHrs||actualHrs);
+        var useHrs=mode==='actual'?effHrs:schedHrs;
+        if(useHrs>0){totalHrs+=useHrs;totalEffHrs+=effHrs;
             if(emp.wageType==='monthly_fixed')totalDays+=1;
             else if(emp.type==='Fulltime')totalDays+=convertToDay(calcEffectiveHours(useHrs,emp,sh),emp);
             else totalDays+=useHrs;
         }
-        h+='<tr style="background:'+(we?'#fffde7':'')+';cursor:pointer" onclick="openAttCellEdit(\''+empId+'\','+i+',\''+mi+'\')">';
+        h+='<tr style="background:'+(we?'#fffde7':(isOff?'#eeeeee':''))+';cursor:pointer" onclick="openAttCellEdit(\''+empId+'\','+i+',\''+mi+'\')">';
         h+='<td style="padding:4px;border:1px solid #eee;font-weight:600">'+i+'/'+m+'</td>';
         h+='<td style="padding:4px;border:1px solid #eee;text-align:center">'+dayNames[dw]+'</td>';
         if(mode==='schedule'){
@@ -5094,16 +5257,38 @@ function openAttDetail(empId,mi,mode){
             h+='<td style="padding:4px;border:1px solid #eee;text-align:center;font-weight:700;color:#2e7d32">'+(sv>0?(emp.wageType==='monthly_fixed'?'1':(emp.type==='Fulltime'?sv.toFixed(2):sv.toFixed(1)+'h')):'—')+'</td>';
         }
         if(mode==='actual'){
+            // Cot gio cham cong goc
             h+='<td style="padding:4px;border:1px solid #eee;text-align:center;color:#2e7d32">'+(raw&&raw.checkin?raw.checkin:'—')+'</td>';
             h+='<td style="padding:4px;border:1px solid #eee;text-align:center;color:#c62828">'+(raw&&raw.checkout?raw.checkout:'—')+'</td>';
             h+='<td style="padding:4px;border:1px solid #eee;text-align:center;font-weight:600">'+(actualHrs>0?actualHrs.toFixed(1)+'h':'—')+'</td>';
+            // Cot Boss XN
+            if(isOff){
+                h+='<td colspan="2" style="padding:4px;border:1px solid #eee;text-align:center;background:#eeeeee;color:#757575;font-weight:700">OFF '+(bc.note?'<span style="font-size:9px;font-weight:400">('+bc.note+')</span>':'')+'</td>';
+            }else if(bc){
+                h+='<td style="padding:4px;border:1px solid #eee;text-align:center;background:#fff5f5;color:#8B0000;font-weight:600">'+(bc.checkin||'—')+' → '+(bc.checkout||'—')+'</td>';
+                h+='<td style="padding:4px;border:1px solid #eee;text-align:center;background:#fff5f5;color:#8B0000;font-weight:700">'+(bossHrs>0?bossHrs.toFixed(1)+'h':'—')+'</td>';
+            }else{
+                h+='<td style="padding:4px;border:1px solid #eee;text-align:center;color:#bbb">—</td>';
+                h+='<td style="padding:4px;border:1px solid #eee;text-align:center;color:#bbb">—</td>';
+            }
+            // Cot tinh luong (uu tien Boss XN)
+            var calcText=isOff?'<span style="color:#757575">0 (OFF)</span>':(effHrs>0?effHrs.toFixed(1)+'h':'—');
+            var calcColor=isOff?'#757575':(bossHrs>0?'#8B0000':'#2e7d32');
+            h+='<td style="padding:4px;border:1px solid #eee;text-align:center;background:#e8f5e9;font-weight:700;color:'+calcColor+'">'+calcText+'</td>';
         }
         h+='</tr>';
     }
     h+='<tr style="background:#e8f5e9;font-weight:700"><td colspan="2" style="padding:6px;border:1px solid #ddd">TỔNG</td>';
     if(mode==='schedule'){h+='<td style="border:1px solid #ddd"></td>';h+='<td style="padding:6px;border:1px solid #ddd;text-align:center">'+totalHrs.toFixed(1)+'h</td>';h+='<td style="padding:6px;border:1px solid #ddd;text-align:center;color:#2e7d32">'+(emp.wageType==='monthly_fixed'?Math.round(totalDays)+' ngày':(emp.type==='Fulltime'?totalDays.toFixed(2):totalDays.toFixed(1)+'h'))+'</td>';}
-    if(mode==='actual'){h+='<td colspan="2" style="border:1px solid #ddd"></td>';h+='<td style="padding:6px;border:1px solid #ddd;text-align:center">'+totalHrs.toFixed(1)+'h</td>';}
+    if(mode==='actual'){h+='<td colspan="4" style="border:1px solid #ddd;text-align:right;padding:6px">Tổng giờ tính lương:</td>';h+='<td style="padding:6px;border:1px solid #ddd;text-align:center;background:#fff5f5;color:#8B0000">'+totalEffHrs.toFixed(1)+'h</td>';h+='<td style="padding:6px;border:1px solid #ddd;text-align:center;background:#e8f5e9;color:#2e7d32">'+totalEffHrs.toFixed(1)+'h</td>';}
     h+='</tr></tbody></table>';
+
+    // Chu giai
+    if(mode==='actual'){
+        h+='<div style="margin-top:10px;padding:8px 10px;background:#fff8e1;border-left:3px solid #f57f17;font-size:10px;color:#555;line-height:1.6">';
+        h+='<b>📌 Ghi chú:</b> Cột <b style="color:#2e7d32">Giờ gốc</b> = giờ chấm công gốc của NV (không thay đổi). Cột <b style="color:#8B0000">Boss XN</b> = giờ Boss xác nhận trên BossConfirm. Cột <b style="color:#2e7d32">Tính lương</b> ưu tiên giờ Boss XN nếu có, fallback giờ gốc.';
+        h+='</div>';
+    }
     h+='<div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 0;border-top:1px solid #eee;margin-top:8px">';
     h+='<button onclick="closeModal(\'attDetailModal\')" class="btn btn-outline" style="padding:6px 20px;font-size:11px"><i class="fas fa-times"></i> Đóng 關閉</button>';
     h+='<button onclick="saveData();closeModal(\'attDetailModal\');loadAttendance();showSuccess(\'Đã lưu!\')" class="btn btn-primary" style="padding:6px 20px;font-size:11px"><i class="fas fa-save"></i> Lưu 儲存</button>';
@@ -6826,6 +7011,16 @@ function getEffSalary(emp,mi){
     }
     return {baseSalary:emp.baseSalary||0,responsibility:emp.responsibility||0,attendance:emp.attendance||0};
 }
+// Helper: lay raw timesheet cho payroll. Uu tien gio Boss XN tu BossConfirm (attBossConfirmations),
+// fallback ve gio cham cong goc (attTimesheetData). KHONG dung neu boss da XN OFF.
+function _payrollRaw(dk){
+    var bc=attBossConfirmations[dk];
+    if(bc){
+        if(bc.status==='off')return null; // OFF -> khong tinh luong ngay nay
+        if(bc.hours>0||bc.checkin)return {checkin:bc.checkin,checkout:bc.checkout,hours:bc.hours,segments:bc.segments,fromBoss:true};
+    }
+    return attTimesheetData[dk];
+}
 function getPayrollData(emp,mi){
     var ovr=payrollOverrides[mi+'-'+emp.id]||{};
     var days=new Date(parseInt(mi.split('-')[0]),parseInt(mi.split('-')[1]),0).getDate();
@@ -6837,7 +7032,7 @@ function getPayrollData(emp,mi){
         var dk=mi+'-'+String(i).padStart(2,'0')+'-'+emp.id;
         var dateStr=mi+'-'+String(i).padStart(2,'0');
         var covr=attConvertOverrides[dk]||{};
-        var sh=schedules[dk];var raw=attTimesheetData[dk];
+        var sh=schedules[dk];var raw=_payrollRaw(dk);
         var schedHrs=sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0;
         var actualHrs=raw&&raw.hours?raw.hours:0;
         var hrs=actualHrs||schedHrs;
@@ -6893,7 +7088,7 @@ function getPayrollDataForDept(emp,mi,targetDept){
         }
         if(!sh||!sh.start)continue;
         var covr=attConvertOverrides[dk]||{};
-        var raw=attTimesheetData[dk];
+        var raw=_payrollRaw(dk);
         var schedHrs=getScheduleHours(emp.id,dk);
         var actualHrs=raw&&raw.hours?raw.hours:0;
         var hrs=actualHrs||schedHrs;
@@ -8165,15 +8360,45 @@ function doPublishScheduleRange(){
         });
     }
     if(data.length===0){alert('Không có dữ liệu lịch làm! 無排班數據');return;}
-    if(!confirm('Phát '+data.length+' ca của '+selEmps.size+' nhân viên?\n發布'+data.length+'個班次？'))return;
-    var params={action:'publishSchedule',bossPassword:empPortalConfig.bossPassword,period:from+' to '+to,data:JSON.stringify(data)};
-    // Show loading
+    if(!confirm('Phát '+data.length+' ca của '+selEmps.size+' nhân viên?\n發布'+data.length+'個班次？\n\n✓ Lịch cũ trong cùng khoảng ngày SẼ BỊ XÓA và thay bằng lịch mới này.'))return;
+
     var pubBtn=document.querySelector('#publishScheduleModal .btn[onclick*="doPublish"]');
-    if(pubBtn){pubBtn.disabled=true;pubBtn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Đang phát...';}
-    portalApiCall(params,function(res){
+    if(pubBtn){pubBtn.disabled=true;pubBtn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Doc lich cu...';}
+
+    // Buoc 1: Lay snapshot backend cho period -> identify entries can XOA (co backend, khong co local)
+    var apiUrl=empPortalConfig.apiUrl;
+    fetch(apiUrl+'?action=getAllSchedule',{redirect:'follow'}).then(function(r){return r.json();}).then(function(res){
+        var backendSched=(res && res.schedule)||[];
+        // Build set cua (empId,date) tu local data
+        var localKeys={};
+        data.forEach(function(d){ localKeys[d.empId+'|'+d.date]=true; });
+        // Tim entries backend trong period CO nhung khong co o local -> them empty entry de XOA
+        var fromD=new Date(from),toD=new Date(to);
+        var deleteMarkers=[];
+        backendSched.forEach(function(s){
+            if(!s||!s.date||!s.empId)return;
+            if(!s.start&&!s.end)return; // da empty
+            var sd=new Date(s.date);
+            if(sd<fromD||sd>toD)return; // ngoai period
+            var k=s.empId+'|'+s.date;
+            if(localKeys[k])return; // co trong local
+            deleteMarkers.push({empId:s.empId,date:s.date,start:'',end:'',dept:s.dept||'',empName:s.empName||''});
+        });
+        var finalData=data.concat(deleteMarkers);
+        if(pubBtn){pubBtn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Dang phat ('+data.length+' moi + '+deleteMarkers.length+' xoa)...';}
+
+        var params={action:'publishSchedule',bossPassword:empPortalConfig.bossPassword,period:from+' to '+to,data:JSON.stringify(finalData)};
+        portalApiCall(params,function(res){
+            if(pubBtn){pubBtn.disabled=false;pubBtn.innerHTML='<i class="fas fa-paper-plane"></i> Phát lịch 發布';}
+            if(res.success){closeModal('publishScheduleModal');
+                var tc2=data.filter(function(d){return d.task&&d.task.length>0;}).length;
+                showSuccess('✓ Đã phát lịch! '+data.length+' ca moi'+(deleteMarkers.length?' + '+deleteMarkers.length+' ca cu da xoa':'')+(tc2?' ('+tc2+' có task)':'')+' 已發布');
+            }
+            else{alert('Lỗi phát lịch: '+(res.error||'Không xác định')+'\n\nThử lại hoặc kiểm tra kết nối mạng.');}
+        });
+    }).catch(function(e){
         if(pubBtn){pubBtn.disabled=false;pubBtn.innerHTML='<i class="fas fa-paper-plane"></i> Phát lịch 發布';}
-        if(res.success){closeModal('publishScheduleModal');var tc2=data.filter(function(d){return d.task&&d.task.length>0;}).length;showSuccess('Đã phát lịch! '+(res.count||data.length)+' ca'+(tc2?' ('+tc2+' có task)':'')+' 已發布排班');}
-        else{alert('Lỗi phát lịch: '+(res.error||'Không xác định')+'\n\nThử lại hoặc kiểm tra kết nối mạng.');}
+        alert('Lỗi đọc lịch cũ từ backend: '+e.message);
     });
 }
 function bossPublishPayroll() {
