@@ -5106,8 +5106,10 @@ function buildAttConvertFT(title,cls,emps,dateList,mi){
         dateList.forEach(function(d){
             var day=d.getDate();
             var dk=schedKey(mi+'-'+String(day).padStart(2,'0'),emp.id,_attDept,emp._originalDept||emp.dept);
-            var sh=schedules[dk];var raw=attTimesheetData[dk];
-            var hrs=raw&&raw.hours?raw.hours:(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
+            var sh=schedules[dk];var raw=(typeof _payrollRaw==='function')?_payrollRaw(dk):attTimesheetData[dk];
+            var actualHrs=raw&&raw.hours?raw.hours:0;
+            if(actualHrs>0&&sh&&sh.start&&typeof _payrollHours==='function')actualHrs=_payrollHours(raw,sh);
+            var hrs=actualHrs||(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
             var nc=0,ot=0,le=0,pn=0,vr=0,kp=0,late2=0;
             var ovr=attConvertOverrides[dk]||{};
             var attV=attendanceData[dk]||'';var vu=attV.toUpperCase();
@@ -5959,8 +5961,10 @@ function exportAttendance(){
         dateList.forEach(function(dd){
             var day=dd.getDate();
             var dk=schedKey(mi+'-'+String(day).padStart(2,'0'),emp.id,_attDept,emp._originalDept||emp.dept);
-            var sh=schedules[dk];var raw=attTimesheetData[dk];
-            var hrs=raw&&raw.hours?raw.hours:(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
+            var sh=schedules[dk];var raw=(typeof _payrollRaw==='function')?_payrollRaw(dk):attTimesheetData[dk];
+            var actualHrs=raw&&raw.hours?raw.hours:0;
+            if(actualHrs>0&&sh&&sh.start&&typeof _payrollHours==='function')actualHrs=_payrollHours(raw,sh);
+            var hrs=actualHrs||(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
             var nc=0,ot=0,le=0,pn=0,vr=0,kp=0,late2=0;
             var ovr=attConvertOverrides[dk]||{};
             var attV=attendanceData[dk]||'';var vu=attV.toUpperCase();
@@ -9772,8 +9776,10 @@ function exportAttendanceExcel(){_ensureXLSX(function(){
         dateList.forEach(function(dd){
             var day=dd.getDate();
             var dk=schedKey(mi+'-'+String(day).padStart(2,'0'),emp.id,_attDept,emp._originalDept||emp.dept);
-            var sh=schedules[dk];var raw=attTimesheetData[dk];
-            var hrs=raw&&raw.hours?raw.hours:(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
+            var sh=schedules[dk];var raw=(typeof _payrollRaw==='function')?_payrollRaw(dk):attTimesheetData[dk];
+            var actualHrs=raw&&raw.hours?raw.hours:0;
+            if(actualHrs>0&&sh&&sh.start&&typeof _payrollHours==='function')actualHrs=_payrollHours(raw,sh);
+            var hrs=actualHrs||(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
             var nc=0,ot=0,le=0,pn=0,vr=0,kp=0,late2=0;
             var ovr=attConvertOverrides[dk]||{};
             var attV=attendanceData[dk]||'';var vu=attV.toUpperCase();
