@@ -7099,13 +7099,13 @@ function getPayrollDataForDept(emp,mi,targetDept){
         var dk=schedKey(_dateBase,emp.id,targetDept,emp.dept);
         var sh=schedules[dk];
         if(!sh||!sh.start){
-            // Fallback: try old format key (backward compat with old data)
+            // Fallback: chi dung base key NEU scheduleDepts EXPLICITLY khai bao day la cua targetDept
+            // (tranh "an" nham lich home dept khi scheduleDepts chua duoc set)
             var dkOld=_dateBase+'-'+emp.id;
-            sh=schedules[dkOld];
-            if(sh&&sh.start){
-                var dayDept=scheduleDepts[dkOld];
-                if(dayDept&&dayDept!==targetDept){sh=null;}
-                else{dk=dkOld;}
+            var dayDept=scheduleDepts[dkOld];
+            if(dayDept===targetDept){
+                sh=schedules[dkOld];
+                if(sh&&sh.start) dk=dkOld;
             }
         }
         if(!sh||!sh.start)continue;
@@ -9800,8 +9800,4 @@ function exportPayrollExcel(){_ensureXLSX(function(){
     XLSX.utils.book_append_sheet(wb,ws_sum,'Tổng hợp');
 
     _downloadXLSX(wb,'BangLuong_'+mi+'.xlsx');
-    showSuccess('Đã tải Excel 已下載薪資表');
-});}
-</script>
-</body>
-</html>
+    showSuccess('Đã
