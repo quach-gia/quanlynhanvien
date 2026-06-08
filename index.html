@@ -1319,6 +1319,8 @@ function loadData(){
         }
         // Safety: strip any keys that were intentionally deleted (防止 cloud 殘留)
         if(_deletedKeys.schedules){var dk=Object.keys(_deletedKeys.schedules);for(var i=0;i<dk.length;i++){delete schedules[dk[i]];delete kitchenLabels[dk[i]];delete scheduleDepts[dk[i]];}}
+        // Dam bao cau hinh cross-dept cho cac NV ho tro nhieu bo phan (cloud co the ghi de)
+        if(typeof _ensureCrossDeptSetup==='function')_ensureCrossDeptSetup();
         return true;
     }catch(e){console.warn('Đọc localStorage thất bại:',e);return false;}
 }
@@ -1336,9 +1338,29 @@ function _postInit(){
     hS.value='17';hE.value='23';
     // Migration: RC/TV always Bếp dept + monthly_fixed
     employees.forEach(function(e){if(e.position==='Rửa chén'||e.position==='Tạp vụ'){e.dept='Bếp';if(!e.wageType){e.wageType='monthly_fixed';if(!e.fixedSalary){e.fixedSalary=(e.baseSalary||0)+(e.responsibility||0)+(e.attendance||0);}e.fixedDaysOff=e.fixedDaysOff!=null?e.fixedDaysOff:1;}}});
+    _ensureCrossDeptSetup();
     renderEmployees();updateStats();
     // Init cloud sync status
     if(CLOUD_SYNC_URL)_updateSyncStatus('saved');
+}
+
+// Dam bao cau hinh cross-dept dung cho cac NV ho tro nhieu bo phan.
+// Cloud sync co the ghi de crossDeptSchedule -> can re-apply moi lan load.
+function _ensureCrossDeptSetup(){
+    try {
+        var CROSS_DEPT_FIX = {
+            // empId -> {kitchen: boolean, service: boolean} (true = phai co trong set do)
+            'PTBE025': {kitchen: true, service: true} // Nguyen Loc - ho tro CA Bep va PV
+        };
+        Object.keys(CROSS_DEPT_FIX).forEach(function(empId){
+            var cfg = CROSS_DEPT_FIX[empId];
+            // Khong duoc an khoi schedule
+            if (hiddenFromSchedule.has(empId)) hiddenFromSchedule.delete(empId);
+            // Add vao cross-dept sets theo cau hinh
+            if (cfg.kitchen && !crossDeptSchedule.kitchen.has(empId)) crossDeptSchedule.kitchen.add(empId);
+            if (cfg.service && !crossDeptSchedule.service.has(empId)) crossDeptSchedule.service.add(empId);
+        });
+    } catch(e){ console.warn('_ensureCrossDeptSetup error:', e); }
 }
 function _initDefaultData(){
     employees=JSON.parse(JSON.stringify(INITIAL_EMPLOYEES));
