@@ -1136,6 +1136,19 @@ function _scheduleCloudSave(jsonStr){
     _cloudSaveTimer=setTimeout(function(){_doCloudSave(jsonStr);},800);
 }
 function _doCloudSave(jsonStr){
+    // SAFETY GUARD: khong save neu data qua nho (tranh ghi de cloud bang default/empty)
+    try {
+        var checkData=JSON.parse(jsonStr);
+        var empCount=(checkData.employees||[]).length;
+        var schedCount=Object.keys(checkData.schedules||{}).length;
+        // Neu < 3 NV VA < 10 schedule entries -> co the la default/empty, KHONG save
+        if(empCount<3 && schedCount<10){
+            console.warn('Cloud save SKIPPED: data too small ('+empCount+' NV, '+schedCount+' schedules). Avoid overwriting cloud.');
+            _updateSyncStatus('error','Data qua nho, khong save de tranh mat data cloud');
+            return;
+        }
+    } catch(ge){ console.warn('Guard check failed:',ge); }
+
     if(!CLOUD_SYNC_URL)return;
     if(_cloudSaving){_cloudRetryData=jsonStr;return;}
     _cloudSaving=true;_cloudRetryData=null;
@@ -1147,7 +1160,7 @@ function _doCloudSave(jsonStr){
     var total=chunks.length;
     if(total<=1){
         // Small data: single GET
-        fetch(CLOUD_SYNC_URL+'?action=saveData&password='+CLOUD_SYNC_PWD+'&data='+encodeURIComponent(jsonStr),{redirect:'follow'})
+        fetch(CLOUD_SYNC_URL,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'action=saveData&password='+CLOUD_SYNC_PWD+'&data='+encodeURIComponent(jsonStr),redirect:'follow'})
         .then(function(r){return r.json();}).then(function(res){
             _cloudSaving=false;
             if(res.success){_lastCloudSave=res.savedAt||'';_cloudDirty=false;_updateSyncStatus('saved');_deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');console.log('Cloud saved');}
@@ -1176,8 +1189,9 @@ function _doCloudSave(jsonStr){
     function sendNext(){
         if(queue.length===0||failed)return;
         var idx=queue.shift();
-        var url=CLOUD_SYNC_URL+'?action=saveDataChunk&password='+CLOUD_SYNC_PWD+'&chunkIndex='+idx+'&totalChunks='+total+'&data='+encodeURIComponent(chunks[idx]);
-        fetch(url,{redirect:'follow'}).then(function(r){return r.json();}).then(function(res){
+        var url=CLOUD_SYNC_URL;
+        var body='action=saveDataChunk&password='+CLOUD_SYNC_PWD+'&chunkIndex='+idx+'&totalChunks='+total+'&data='+encodeURIComponent(chunks[idx]);
+        fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body,redirect:'follow'}).then(function(r){return r.json();}).then(function(res){
             if(!res.success&&!failed){failed=true;_cloudSaving=false;_updateSyncStatus('error','Chunk '+idx+': '+res.error);return;}
             onChunkDone();sendNext();
         }).catch(function(err){
@@ -1329,16 +1343,13 @@ function clearAllData(){
 }
 
 function _postInit(){
-    // Common init (runs for both fresh and loaded data)
     document.getElementById('taskDate').valueAsDate=new Date();
     var hS=document.getElementById('spHourStart'),hE=document.getElementById('spHourEnd');
     for(var i=8;i<=24;i++){var v=String(i).padStart(2,'0');hS.innerHTML+='<option value="'+v+'">'+v+'</option>';hE.innerHTML+='<option value="'+v+'">'+v+'</option>';}
     hS.value='17';hE.value='23';
-    // Migration: RC/TV always Bếp dept + monthly_fixed
     employees.forEach(function(e){if(e.position==='Rửa chén'||e.position==='Tạp vụ'){e.dept='Bếp';if(!e.wageType){e.wageType='monthly_fixed';if(!e.fixedSalary){e.fixedSalary=(e.baseSalary||0)+(e.responsibility||0)+(e.attendance||0);}e.fixedDaysOff=e.fixedDaysOff!=null?e.fixedDaysOff:1;}}});
     if(typeof _ensureCrossDeptSetup==='function')_ensureCrossDeptSetup();
     renderEmployees();updateStats();
-    // Init cloud sync status
     if(CLOUD_SYNC_URL)_updateSyncStatus('saved');
 }
 function _ensureCrossDeptSetup(){
@@ -7028,10 +7039,86 @@ function getEffSalary(emp,mi){
 function _payrollRaw(dk){
     var bc=attBossConfirmations[dk];
     if(bc){
-        if(bc.status==='off')return null; // OFF -> khong tinh luong ngay nay
+        if(bc.status==='off')return null;
         if(bc.hours>0||bc.checkin)return {checkin:bc.checkin,checkout:bc.checkout,hours:bc.hours,segments:bc.segments,fromBoss:true};
     }
     return attTimesheetData[dk];
+}
+// Quy tac lam tron Boss (5 phut):
+// VAO: som hoac tre <=5p -> lich. Tre >5p -> punch.
+// RA: som -> punch (boss xu ly). Muon <=5p -> lich. Muon >5p -> punch.
+function _roundPunchForBoss(punchTime, schedTime, isStart){
+    if(!punchTime||!schedTime)return punchTime||'';
+    var p=String(punchTime).match(/(\d{1,2}):(\d{1,2})/);
+    var s=String(schedTime).match(/(\d{1,2}):(\d{1,2})/);
+    if(!p||!s)return punchTime;
+    var pad=function(n){return String(n).padStart(2,'0');};
+    var pMin=parseInt(p[1])*60+parseInt(p[2]);
+    var sMin=parseInt(s[1])*60+parseInt(s[2]);
+    var diff=pMin-sMin; // > 0 = punch later than sched
+    var sStr=pad(parseInt(s[1]))+':'+pad(parseInt(s[2]));
+    var pStr=pad(parseInt(p[1]))+':'+pad(parseInt(p[2]));
+    var THRESHOLD=5;
+    if(isStart){
+        if(diff<=0)return sStr;
+        if(diff<=THRESHOLD)return sStr;
+        return pStr;
+    } else {
+        if(diff<0)return pStr;
+        if(diff<=THRESHOLD)return sStr;
+        return pStr;
+    }
+}
+// Tinh gio luong sau khi ap dung round-rule + split-shift adjustment
+function _payrollHours(raw, sh){
+    if(!raw||!raw.checkin)return raw&&raw.hours?raw.hours:0;
+    var rawIn=raw.checkin;
+    var rawOut=raw.checkout||'';
+    if(sh&&sh.start&&sh.end){
+        var startSegs=String(sh.start).split(',');
+        var endSegs=String(sh.end).split(',');
+        var schedStart=startSegs[0].trim();
+        var schedEnd=endSegs[endSegs.length-1].trim();
+        var rIn=_roundPunchForBoss(rawIn,schedStart,true);
+        var rOut=_roundPunchForBoss(rawOut,schedEnd,false);
+        // Compute hours from rounded times
+        var pi=rIn.match(/(\d{1,2}):(\d{1,2})/);
+        var po=rOut.match(/(\d{1,2}):(\d{1,2})/);
+        if(pi&&po){
+            var hi=parseInt(pi[1])*60+parseInt(pi[2]);
+            var ho=parseInt(po[1])*60+parseInt(po[2]);
+            var diff=ho-hi;
+            if(diff<0)diff+=24*60; // qua dem
+            var hrs=diff/60;
+            // Apply split-shift gap adjustment
+            hrs=_adjustHoursForSplitShift(hrs, sh, raw);
+            return Math.round(hrs*100)/100;
+        }
+    }
+    return raw.hours||0;
+}
+// Helper: ca gay (split shift) - NV punch lien tuc 1 pair ma lich co split -> tru gap break
+function _adjustHoursForSplitShift(hrs, sh, raw){
+    if(!sh||!sh.start)return hrs;
+    if(typeof sh.start!=='string'||sh.start.indexOf(',')<0)return hrs;
+    if(!raw||!raw.checkin)return hrs;
+    if(raw.segments && raw.segments.length>=2)return hrs;
+    var schedStarts=sh.start.split(',');
+    var schedEnds=(sh.end||'').split(',');
+    var gap=0;
+    for(var k=1;k<schedStarts.length;k++){
+        var prevEnd=(schedEnds[k-1]||'').trim();
+        var thisStart=(schedStarts[k]||'').trim();
+        if(prevEnd && thisStart){
+            var p1=prevEnd.split(':').map(Number);
+            var p2=thisStart.split(':').map(Number);
+            if(!isNaN(p1[0])&&!isNaN(p2[0])){
+                var gapMin=(p2[0]*60+(p2[1]||0))-(p1[0]*60+(p1[1]||0));
+                if(gapMin>0) gap+=gapMin/60;
+            }
+        }
+    }
+    return Math.max(0, hrs - gap);
 }
 function getPayrollData(emp,mi){
     var ovr=payrollOverrides[mi+'-'+emp.id]||{};
@@ -7047,6 +7134,8 @@ function getPayrollData(emp,mi){
         var sh=schedules[dk];var raw=_payrollRaw(dk);
         var schedHrs=sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0;
         var actualHrs=raw&&raw.hours?raw.hours:0;
+        // Ap quy tac lam tron Boss 5p cho moi NV
+        if(actualHrs>0&&sh&&sh.start) actualHrs=_payrollHours(raw,sh);
         var hrs=actualHrs||schedHrs;
         var attV=attendanceData[dk]||'';var vu=attV.toUpperCase();
         var holMul=getHolidayMultiplier(dateStr);
@@ -7089,7 +7178,6 @@ function getPayrollDataForDept(emp,mi,targetDept){
         var dk=schedKey(_dateBase,emp.id,targetDept,emp.dept);
         var sh=schedules[dk];
         if(!sh||!sh.start){
-            // Strict: chi dung base key NEU scheduleDepts EXPLICITLY khai bao targetDept
             var dkOld=_dateBase+'-'+emp.id;
             var dayDept=scheduleDepts[dkOld];
             if(dayDept===targetDept){
@@ -7102,6 +7190,7 @@ function getPayrollDataForDept(emp,mi,targetDept){
         var raw=_payrollRaw(dk);
         var schedHrs=getScheduleHours(emp.id,dk);
         var actualHrs=raw&&raw.hours?raw.hours:0;
+        if(actualHrs>0&&sh&&sh.start) actualHrs=_payrollHours(raw,sh);
         var hrs=actualHrs||schedHrs;
         var attV=attendanceData[dk]||'';var vu=attV.toUpperCase();
         var holMul=getHolidayMultiplier(dateStr);
