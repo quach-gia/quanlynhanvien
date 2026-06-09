@@ -1136,51 +1136,15 @@ function _doCloudSave(jsonStr){
     if(_cloudSaving){_cloudRetryData=jsonStr;return;}
     _cloudSaving=true;_cloudRetryData=null;
     _updateSyncStatus('saving');
-    // Split into chunks (Google Apps Script GET URL limit ~5500 chars for data)
-    var CHUNK=4000;
-    var chunks=[];
-    for(var i=0;i<jsonStr.length;i+=CHUNK)chunks.push(jsonStr.substring(i,i+CHUNK));
-    var total=chunks.length;
-    if(total<=1){
-        // Small data: single GET
-        fetch(CLOUD_SYNC_URL+'?action=saveData&password='+CLOUD_SYNC_PWD+'&data='+encodeURIComponent(jsonStr),{redirect:'follow'})
-        .then(function(r){return r.json();}).then(function(res){
-            _cloudSaving=false;
-            if(res.success){_lastCloudSave=res.savedAt||'';_cloudDirty=false;_updateSyncStatus('saved');_deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');console.log('Cloud saved');}
-            else{_updateSyncStatus('error',res.error);}
-            if(_cloudRetryData){var rd=_cloudRetryData;_cloudRetryData=null;_doCloudSave(rd);}
-        }).catch(function(err){_cloudSaving=false;_updateSyncStatus('error',err.toString());});
-        return;
-    }
-    // Large data: parallel chunks then assemble
-    var done=0,failed=false;
-    var PARALLEL=5;
-    var queue=chunks.map(function(c,idx){return idx;});
-    function onChunkDone(){
-        done++;
-        _updateSyncStatus('saving','Lưu '+done+'/'+total);
-        if(done===total&&!failed){
-            fetch(CLOUD_SYNC_URL+'?action=assembleChunks&password='+CLOUD_SYNC_PWD+'&totalChunks='+total,{redirect:'follow'})
-            .then(function(r){return r.json();}).then(function(ar){
-                _cloudSaving=false;
-                if(ar.success){_lastCloudSave=ar.savedAt||'';_cloudDirty=false;_updateSyncStatus('saved');_deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');console.log('Cloud saved ('+total+' chunks)');}
-                else{_updateSyncStatus('error',ar.error);}
-                if(_cloudRetryData){var rd=_cloudRetryData;_cloudRetryData=null;_doCloudSave(rd);}
-            }).catch(function(err){_cloudSaving=false;_updateSyncStatus('error',err.toString());});
-        }
-    }
-    function sendNext(){
-        if(queue.length===0||failed)return;
-        var idx=queue.shift();
-        var url=CLOUD_SYNC_URL+'?action=saveDataChunk&password='+CLOUD_SYNC_PWD+'&chunkIndex='+idx+'&totalChunks='+total+'&data='+encodeURIComponent(chunks[idx]);
-        fetch(url,{redirect:'follow'}).then(function(r){return r.json();}).then(function(res){
-            if(!res.success&&!failed){failed=true;_cloudSaving=false;_updateSyncStatus('error','Chunk '+idx+': '+res.error);return;}
-            onChunkDone();sendNext();
-        }).catch(function(err){
-            if(!failed){failed=true;_cloudSaving=false;_updateSyncStatus('error','Chunk '+idx+': '+err);}
-        });
-    }
-    for(var p=0;p<Math.min(PARALLEL,total);p++)sendNext();
+    // POST single payload - avoids URL length limit AND chunk-boundary corruption bug
+    var body='action=saveData&password='+encodeURIComponent(CLOUD_SYNC_PWD)+'&data='+encodeURIComponent(jsonStr);
+    fetch(CLOUD_SYNC_URL,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body,redirect:'follow'})
+    .then(function(r){return r.json();}).then(function(res){
+        _cloudSaving=false;
+        if(res.success){_lastCloudSave=res.savedAt||'';_cloudDirty=false;_updateSyncStatus('saved');_deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');console.log('Cloud saved (POST single, '+jsonStr.length+'b)');}
+        else{_updateSyncStatus('error',res.error);}
+        if(_cloudRetryData){var rd=_cloudRetryData;_cloudRetryData=null;_doCloudSave(rd);}
+    }).catch(function(err){_cloudSaving=false;_updateSyncStatus('error',err.toString());});
 }
 // Show browser warning if there are unsaved cloud changes
 // NOTE: sync XHR doesn't follow GAS 302 redirects, sendBeacon has 64KB limit (data ~180KB)
@@ -9850,4 +9814,15 @@ function exportPayrollExcel(){_ensureXLSX(function(){
         var bonus=ovr.bonus||0;var otherTotal=0;(ovr.otherItems||[]).forEach(function(o){otherTotal+=o.amount||0;});
         var totalPay=sb+otPay+lePay+bonus+otherTotal;var deduct=ovr.deduct||0;var netPay=totalPay-deduct;
         var payMethod=(ovr.payMethod==='tm')?'TM':'CK';
-        sumRows.push([sNo,emp.id,emp.name+(emp.nameCN?' '+em
+        sumRows.push([sNo,emp.id,emp.name+(emp.nameCN?' '+emp.nameCN:''),emp.type+' / '+emp.dept,'',Math.round(netPay),payMethod]);
+    });
+    var ws_sum=XLSX.utils.aoa_to_sheet(sumRows);
+    ws_sum['!cols']=[{wch:5},{wch:12},{wch:22},{wch:16},{wch:10},{wch:14},{wch:10}];
+    XLSX.utils.book_append_sheet(wb,ws_sum,'Tổng hợp');
+
+    _downloadXLSX(wb,'BangLuong_'+mi+'.xlsx');
+    showSuccess('Đã tải Excel 已下載薪資表');
+});}
+</script>
+</body>
+</html>
