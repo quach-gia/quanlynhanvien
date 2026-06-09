@@ -1171,11 +1171,10 @@ function _doCloudSave(jsonStr){
     if(_cloudSaving){_cloudRetryData=jsonStr;return;}
     _cloudSaving=true;_cloudRetryData=null;
     _updateSyncStatus('saving');
-    // Split into chunks (Google Apps Script GET URL limit ~5500 chars for data)
-    var CHUNK=4000;
-    var chunks=[];
-    for(var i=0;i<jsonStr.length;i+=CHUNK)chunks.push(jsonStr.substring(i,i+CHUNK));
-    var total=chunks.length;
+    // ALWAYS use single POST (chunks bi loi backend) - POST body co the lon
+    var CHUNK=10000000; // 10M -> effectively no chunking
+    var chunks=[jsonStr];
+    var total=1;
     if(total<=1){
         // Small data: single GET
         fetch(CLOUD_SYNC_URL,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'action=saveData&password='+CLOUD_SYNC_PWD+'&data='+encodeURIComponent(jsonStr),redirect:'follow'})
