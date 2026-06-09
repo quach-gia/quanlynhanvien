@@ -436,7 +436,7 @@ td.cell-selected{outline:3px solid #ff6f00 !important;outline-offset:-2px;box-sh
         </div>
         <div class="att-subtabs" id="attSubTabs">
             <button class="att-subtab active" onclick="setAttSubView('schedule')"><i class="fas fa-calendar-check"></i> Lịch làm 排班</button>
-            <button class="att-subtab" onclick="setAttSubView('actual')"><i class="fas fa-clock"></i> Giờ chấm công 打卡時數</button>
+            <button class="att-subtab" onclick="setAttSubView('actual')"><i class="fas fa-clock"></i> Giờ thực 實際時數</button>
             <button class="att-subtab" onclick="setAttSubView('convert')"><i class="fas fa-exchange-alt"></i> Quy đổi 換算</button>
             <button class="att-subtab" onclick="setAttSubView('deviceAlert')" id="btnDeviceAlertTab"><i class="fas fa-exclamation-triangle"></i> Cảnh báo TB 設備警報<span id="daAlertBadge" class="device-alert-badge" style="display:none">0</span></button>
         </div>
@@ -834,11 +834,7 @@ const NAME_MAP={'nguyễn':'阮','trần':'陳','lê':'黎','phạm':'范','hoà
 const POSITION_CONFIG={'Bếp trưởng':{dept:'Bếp',prefix:'BT'},'Phụ bếp':{dept:'Bếp',prefix:'BE'},'Quản lý bên ngoài':{dept:'Phục vụ',prefix:'QL'},'Leader':{dept:'Phục vụ',prefix:'LD'},'Nhân viên phục vụ':{dept:'Phục vụ',prefix:'NV'},'Rửa chén':{dept:'Bếp',prefix:'RC'},'Tạp vụ':{dept:'Bếp',prefix:'TV'}};
 const POS_CN={'Bếp trưởng':'主廚','Phụ bếp':'廚助','Quản lý bên ngoài':'外場管理','Leader':'組長','Nhân viên phục vụ':'服務員','Rửa chén':'洗碗','Tạp vụ':'雜務'};
 const INITIAL_EMPLOYEES = [
-{id:"QL001",name:"Triệu Như",nameCN:"趙茹",dept:"Phục vụ",position:"Quản lý bên ngoài",type:"Fulltime",startDate:"17/04/2025",endDate:"17/09/2025",probBaseSalary:7500000,probResponsibility:0,probAttendance:0,baseSalary:7600000,responsibility:300000,attendance:300000,probPeriod:"2 tháng",hourlyRate:0,bankName:"",bankAccount:"",bankHolder:"",qrImage:"",salaryHistory:[{date:"17/04/2025",baseSalary:7600000,responsibility:300000,attendance:300000,note:"Lương ban đầu"}],changelog:["17/04/2025: Nhận việc","17/09/2025: Thôi việc"]},
-            {id:"NV005",name:"Minh Đức",nameCN:"明德",dept:"Phục vụ",position:"Nhân viên phục vụ",type:"Fulltime",startDate:"03/05/2025",endDate:"",probBaseSalary:7000000,probResponsibility:0,probAttendance:0,baseSalary:7200000,responsibility:300000,attendance:300000,probPeriod:"2 tháng",hourlyRate:0,bankName:"",bankAccount:"",bankHolder:"",qrImage:"",salaryHistory:[{date:"03/05/2025",baseSalary:7200000,responsibility:300000,attendance:300000,note:"Lương ban đầu"}],changelog:["03/05/2025: Nhận việc"]},
-            {id:"NV007",name:"Võ Thiệu Hưng",nameCN:"武紹興",dept:"Phục vụ",position:"Nhân viên phục vụ",type:"Fulltime",startDate:"19/05/2025",endDate:"",probBaseSalary:0,probResponsibility:0,probAttendance:0,baseSalary:7200000,responsibility:300000,attendance:300000,probPeriod:"",hourlyRate:0,bankName:"",bankAccount:"",bankHolder:"",qrImage:"",salaryHistory:[{date:"19/05/2025",baseSalary:7200000,responsibility:300000,attendance:300000,note:"Lương ban đầu"}],changelog:["19/05/2025: Nhận việc"]},
-            {id:"NV008",name:"Yến Nhi",nameCN:"燕兒",dept:"Phục vụ",position:"Nhân viên phục vụ",type:"Fulltime",startDate:"23/07/2025",endDate:"",probBaseSalary:7000000,probResponsibility:0,probAttendance:0,baseSalary:7200000,responsibility:300000,attendance:300000,probPeriod:"2 tháng",hourlyRate:0,bankName:"",bankAccount:"",bankHolder:"",qrImage:"",salaryHistory:[{date:"23/07/2025",baseSalary:7200000,responsibility:300000,attendance:300000,note:"Lương ban đầu"}],changelog:["23/07/2025: Nhận việc"]},
-            {id:"NV009",name:"Thanh Trúc",nameCN:"清竹",dept:"Phục vụ",position:"Nhân viên phục vụ",type:"Fulltime",startDate:"02/10/2025",endDate:"",probBaseSalary:7000000,probResponsibility:0,probAttendance:0,baseSalary:7200000,responsibility:300000,attendance:300000,probPeriod:"2 tháng",hourlyRate:0,bankName:"",bankAccount:"",bankHolder:"",qrImage:"",salaryHistory:[{date:"02/10/2025",baseSalary:7200000,responsibility:300000,attendance:300000,note:"Lương ban đầu"}],changelog:["02/10/2025: Nhận việc"]},
+            {id:"QL001",name:"Triệu Như",nameCN:"趙茹",dept:"Phục vụ",position:"Quản lý bên ngoài",type:"Fulltime",startDate:"17/04/2025",endDate:"17/09/2025",probBaseSalary:7500000,probResponsibility:0,probAttendance:0,baseSalary:7600000,responsibility:300000,attendance:300000,probPeriod:"2 tháng",hourlyRate:0,bankName:"",bankAccount:"",bankHolder:"",qrImage:"",salaryHistory:[{date:"17/04/2025",baseSalary:7600000,responsibility:300000,attendance:300000,note:"Lương ban đầu"}],changelog:["17/04/2025: Nhận việc","17/09/2025: Thôi việc"]},
             {id:"BT001",name:"Cường Pu",nameCN:"強浦",dept:"Bếp",position:"Bếp trưởng",type:"Fulltime",startDate:"17/04/2025",endDate:"",probBaseSalary:9000000,probResponsibility:0,probAttendance:0,baseSalary:12400000,responsibility:300000,attendance:300000,probPeriod:"1 tháng",hourlyRate:0,bankName:"",bankAccount:"",bankHolder:"",qrImage:"",salaryHistory:[{date:"17/04/2025",baseSalary:12400000,responsibility:300000,attendance:300000,note:"Lương ban đầu"}],changelog:["17/04/2025: Nhận việc"]},
             {id:"BE006",name:"Thanh Phương",nameCN:"清芳",dept:"Bếp",position:"Phụ bếp",type:"Fulltime",startDate:"20/06/2025",endDate:"",probBaseSalary:7000000,probResponsibility:0,probAttendance:0,baseSalary:7900000,responsibility:300000,attendance:300000,probPeriod:"1 tháng",hourlyRate:0,bankName:"",bankAccount:"",bankHolder:"",qrImage:"",salaryHistory:[{date:"20/06/2025",baseSalary:7900000,responsibility:300000,attendance:300000,note:"Lương ban đầu"}],changelog:["20/06/2025: Nhận việc"]},
             {id:"BE007",name:"Vũ Như Thành",nameCN:"羽茹成",dept:"Bếp",position:"Phụ bếp",type:"Fulltime",startDate:"24/07/2025",endDate:"",probBaseSalary:7000000,probResponsibility:0,probAttendance:0,baseSalary:7200000,responsibility:300000,attendance:300000,probPeriod:"1 tháng",hourlyRate:0,bankName:"",bankAccount:"",bankHolder:"",qrImage:"",salaryHistory:[{date:"24/07/2025",baseSalary:7200000,responsibility:300000,attendance:300000,note:"Lương ban đầu"}],changelog:["24/07/2025: Nhận việc"]},
@@ -886,7 +882,7 @@ const INITIAL_EMPLOYEES = [
             {id:"PTNV057",name:"Trí",nameCN:"智",dept:"Phục vụ",position:"Nhân viên phục vụ",type:"Partime",startDate:"",endDate:"",probBaseSalary:0,probResponsibility:0,probAttendance:0,baseSalary:0,responsibility:0,attendance:0,probPeriod:"",hourlyRate:25000,bankName:"",bankAccount:"",bankHolder:"",qrImage:"",salaryHistory:[],changelog:["Thêm từ lịch 04/2026"]},
             {id:"PTNV058",name:"Tuyền",nameCN:"泉",dept:"Phục vụ",position:"Nhân viên phục vụ",type:"Partime",startDate:"",endDate:"",probBaseSalary:0,probResponsibility:0,probAttendance:0,baseSalary:0,responsibility:0,attendance:0,probPeriod:"",hourlyRate:25000,bankName:"",bankAccount:"",bankHolder:"",qrImage:"",salaryHistory:[],changelog:["Thêm từ lịch 04/2026"]},
             {id:"PTNV059",name:"Trang",nameCN:"莊",dept:"Phục vụ",position:"Nhân viên phục vụ",type:"Partime",startDate:"",endDate:"",probBaseSalary:0,probResponsibility:0,probAttendance:0,baseSalary:0,responsibility:0,attendance:0,probPeriod:"",hourlyRate:25000,bankName:"",bankAccount:"",bankHolder:"",qrImage:"",salaryHistory:[],changelog:["Thêm từ lịch 04/2026"]}
-];
+        ];
 let TASK_LIST_K=[{id:'k_prep',name:'Sơ chế',color:'#e65100',icon:'fa-carrot'},
     {id:'k_grill',name:'Nướng',color:'#d84315',icon:'fa-fire'},
     {id:'k_plating',name:'Ra món',color:'#ff8f00',icon:'fa-utensils'},
@@ -1136,76 +1132,21 @@ function _scheduleCloudSave(jsonStr){
     _cloudSaveTimer=setTimeout(function(){_doCloudSave(jsonStr);},800);
 }
 function _doCloudSave(jsonStr){
-    // SAFETY GUARD: khong save neu data qua nho (tranh ghi de cloud bang default/empty)
-    try {
-        var checkData=JSON.parse(jsonStr);
-        var empCount=(checkData.employees||[]).length;
-        var schedCount=Object.keys(checkData.schedules||{}).length;
-        // STRICT GUARD: block neu empty 1 trong 2 (NV hoac schedules)
-        if(empCount<3 || schedCount<10){
-            console.warn('Cloud save BLOCKED: data too small ('+empCount+'NV, '+schedCount+' schedules)');
-            _updateSyncStatus('error','BLOCKED: data ('+empCount+'NV, '+schedCount+' lich) qua nho');
-            return;
-        }
-        // ANTI-DROP GUARD: chan neu data save dot ngot giam manh so voi lan save truoc
-        var prevEmp=parseInt(localStorage.getItem('_qlnv_lastSavedEmp')||'0');
-        var prevSched=parseInt(localStorage.getItem('_qlnv_lastSavedSched')||'0');
-        if(prevEmp>=10 && empCount < prevEmp - 3){
-            console.error('CLOUD SAVE BLOCKED: NV giam ('+prevEmp+' -> '+empCount+'). Bao ve data.');
-            _updateSyncStatus('error','BLOCKED: NV giam tu '+prevEmp+' xuong '+empCount);
-            return;
-        }
-        if(prevSched>=100 && schedCount < prevSched*0.5){
-            console.error('CLOUD SAVE BLOCKED: Schedules giam manh ('+prevSched+' -> '+schedCount+').');
-            _updateSyncStatus('error','BLOCKED: Lich giam tu '+prevSched+' xuong '+schedCount+' - bao ve data');
-            return;
-        }
-        // Track for next check
-        try{
-            localStorage.setItem('_qlnv_lastSavedEmp', String(empCount));
-            localStorage.setItem('_qlnv_lastSavedSched', String(schedCount));
-        }catch(_){}
-    } catch(ge){ console.warn('Guard check failed:',ge); }
-
-    // CONFLICT CHECK: fetch cloud savedAt, if newer than our last pull, refuse to save
-    if(!CLOUD_SYNC_URL){return;}
-    var lastKnownCloud = localStorage.getItem('_qlnv_cloudSavedAt') || '';
-    var lastKnownTime = lastKnownCloud ? new Date(lastKnownCloud).getTime() : 0;
-    fetch(CLOUD_SYNC_URL+'?action=loadData',{cache:'no-store'}).then(function(r){return r.json();}).then(function(checkRes){
-        if(checkRes && checkRes.savedAt){
-            var cloudTime = new Date(checkRes.savedAt).getTime();
-            if(lastKnownTime>0 && cloudTime > lastKnownTime + 10000){
-                console.error('CONFLICT: Cloud savedAt='+checkRes.savedAt+' newer than our last sync='+lastKnownCloud);
-                _updateSyncStatus('error','CONFLICT: Cloud co thay doi moi! Vui long Tai Cloud truoc khi luu');
-                _cloudSaving=false;
-                return;
-            }
-        }
-        _proceedCloudSave(jsonStr);
-    }).catch(function(e){
-        console.warn('Cloud check failed, proceeding with save:',e);
-        _proceedCloudSave(jsonStr);
-    });
-    return;
-}
-function _proceedCloudSave(jsonStr){
-    try { // dummy to keep structure
-    } catch(ge){ console.warn('Guard check failed:',ge); }
-
     if(!CLOUD_SYNC_URL)return;
     if(_cloudSaving){_cloudRetryData=jsonStr;return;}
     _cloudSaving=true;_cloudRetryData=null;
     _updateSyncStatus('saving');
-    // ALWAYS use single POST (chunks bi loi backend) - POST body co the lon
-    var CHUNK=10000000; // 10M -> effectively no chunking
-    var chunks=[jsonStr];
-    var total=1;
+    // Split into chunks (Google Apps Script GET URL limit ~5500 chars for data)
+    var CHUNK=4000;
+    var chunks=[];
+    for(var i=0;i<jsonStr.length;i+=CHUNK)chunks.push(jsonStr.substring(i,i+CHUNK));
+    var total=chunks.length;
     if(total<=1){
         // Small data: single GET
-        fetch(CLOUD_SYNC_URL,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'action=saveData&password='+CLOUD_SYNC_PWD+'&data='+encodeURIComponent(jsonStr),redirect:'follow'})
+        fetch(CLOUD_SYNC_URL+'?action=saveData&password='+CLOUD_SYNC_PWD+'&data='+encodeURIComponent(jsonStr),{redirect:'follow'})
         .then(function(r){return r.json();}).then(function(res){
             _cloudSaving=false;
-            if(res.success){_lastCloudSave=res.savedAt||'';localStorage.setItem('_qlnv_cloudSavedAt',res.savedAt||'');_cloudDirty=false;_updateSyncStatus('saved');_deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');console.log('Cloud saved');}
+            if(res.success){_lastCloudSave=res.savedAt||'';_cloudDirty=false;_updateSyncStatus('saved');_deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');console.log('Cloud saved');}
             else{_updateSyncStatus('error',res.error);}
             if(_cloudRetryData){var rd=_cloudRetryData;_cloudRetryData=null;_doCloudSave(rd);}
         }).catch(function(err){_cloudSaving=false;_updateSyncStatus('error',err.toString());});
@@ -1231,9 +1172,8 @@ function _proceedCloudSave(jsonStr){
     function sendNext(){
         if(queue.length===0||failed)return;
         var idx=queue.shift();
-        var url=CLOUD_SYNC_URL;
-        var body='action=saveDataChunk&password='+CLOUD_SYNC_PWD+'&chunkIndex='+idx+'&totalChunks='+total+'&data='+encodeURIComponent(chunks[idx]);
-        fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body,redirect:'follow'}).then(function(r){return r.json();}).then(function(res){
+        var url=CLOUD_SYNC_URL+'?action=saveDataChunk&password='+CLOUD_SYNC_PWD+'&chunkIndex='+idx+'&totalChunks='+total+'&data='+encodeURIComponent(chunks[idx]);
+        fetch(url,{redirect:'follow'}).then(function(r){return r.json();}).then(function(res){
             if(!res.success&&!failed){failed=true;_cloudSaving=false;_updateSyncStatus('error','Chunk '+idx+': '+res.error);return;}
             onChunkDone();sendNext();
         }).catch(function(err){
@@ -1306,8 +1246,6 @@ function _loadFromCloud(){
             if(res.success&&res.data){
                 try{
                     localStorage.setItem(LS_KEY,res.data);
-                    localStorage.setItem('_qlnv_cloudSavedAt', res.savedAt||'');
-                    localStorage.setItem('_qlnv_lastSave',String(Date.now()));
                     var ok=loadData();
                     _lastCloudSave=res.savedAt||'';
                     _updateSyncStatus('saved');
@@ -1387,25 +1325,16 @@ function clearAllData(){
 }
 
 function _postInit(){
+    // Common init (runs for both fresh and loaded data)
     document.getElementById('taskDate').valueAsDate=new Date();
     var hS=document.getElementById('spHourStart'),hE=document.getElementById('spHourEnd');
     for(var i=8;i<=24;i++){var v=String(i).padStart(2,'0');hS.innerHTML+='<option value="'+v+'">'+v+'</option>';hE.innerHTML+='<option value="'+v+'">'+v+'</option>';}
     hS.value='17';hE.value='23';
+    // Migration: RC/TV always Bếp dept + monthly_fixed
     employees.forEach(function(e){if(e.position==='Rửa chén'||e.position==='Tạp vụ'){e.dept='Bếp';if(!e.wageType){e.wageType='monthly_fixed';if(!e.fixedSalary){e.fixedSalary=(e.baseSalary||0)+(e.responsibility||0)+(e.attendance||0);}e.fixedDaysOff=e.fixedDaysOff!=null?e.fixedDaysOff:1;}}});
-    if(typeof _ensureCrossDeptSetup==='function')_ensureCrossDeptSetup();
     renderEmployees();updateStats();
+    // Init cloud sync status
     if(CLOUD_SYNC_URL)_updateSyncStatus('saved');
-}
-function _ensureCrossDeptSetup(){
-    try {
-        var CROSS_DEPT_FIX = { 'PTBE025': {kitchen: true, service: true} };
-        Object.keys(CROSS_DEPT_FIX).forEach(function(empId){
-            var cfg = CROSS_DEPT_FIX[empId];
-            if (hiddenFromSchedule.has(empId)) hiddenFromSchedule.delete(empId);
-            if (cfg.kitchen && !crossDeptSchedule.kitchen.has(empId)) crossDeptSchedule.kitchen.add(empId);
-            if (cfg.service && !crossDeptSchedule.service.has(empId)) crossDeptSchedule.service.add(empId);
-        });
-    } catch(e){ console.warn('_ensureCrossDeptSetup error:', e); }
 }
 function _initDefaultData(){
     employees=JSON.parse(JSON.stringify(INITIAL_EMPLOYEES));
@@ -1432,7 +1361,6 @@ function _autoSyncFromCloud(){
                         localStorage.setItem(LS_KEY,mergedJson);
                         localStorage.setItem('_qlnv_lastSave',String(Date.now()));
                         _lastCloudSave=res.savedAt;
-                        localStorage.setItem('_qlnv_cloudSavedAt', res.savedAt||'');
                         _updateSyncStatus('saved');
                         _postInit();
                         showSuccess('\u0110\u00e3 t\u1ef1 \u0111\u1ed9ng \u0111\u1ed3ng b\u1ed9 t\u1eeb Cloud! \u5df2\u81ea\u52d5\u540c\u6b65');
@@ -1447,33 +1375,18 @@ function _autoSyncFromCloud(){
 }
 document.addEventListener('DOMContentLoaded',function(){try{
     var hasData=loadData();
-    var localTime=parseInt(localStorage.getItem('_qlnv_lastSave')||'0');
-    var localAgeMin=(Date.now()-localTime)/60000;
-    // Chi force-pull cloud neu: local TRONG, hoac local cu (> 30 phut), hoac cloud savedAt moi hon local 30s+
-    if(CLOUD_SYNC_URL && (!hasData || localAgeMin > 30)){
+    if(!hasData&&CLOUD_SYNC_URL){
+        // Try loading from cloud
         _loadFromCloud().then(function(cloudOk){
-            if(!cloudOk && !hasData){
-                _initDefaultData();
-            }
+            if(!cloudOk)_initDefaultData();
             _postInit();
-            setInterval(_autoSyncFromCloud,60000);
-            setInterval(function(){if(_cloudDirty&&!_cloudSaving){var j=JSON.stringify(_buildDataObj());_doCloudSave(j);}},30000);
-            document.addEventListener('visibilitychange',function(){if(!document.hidden)_autoSyncFromCloud();});
-        }).catch(function(e){
-            console.warn('Cloud load failed, using local:',e);
-            if(!hasData)_initDefaultData();
-            _postInit();
+            _autoSyncFromCloud();
+            if(CLOUD_SYNC_URL)setInterval(_autoSyncFromCloud,60000);
+            // Periodic forced cloud save every 30s if dirty
+            if(CLOUD_SYNC_URL)setInterval(function(){if(_cloudDirty&&!_cloudSaving){var j=JSON.stringify(_buildDataObj());_doCloudSave(j);}},30000);
+            document.addEventListener('visibilitychange',function(){if(!document.hidden&&CLOUD_SYNC_URL)_autoSyncFromCloud();});
         });
-        return;
-    }
-    if(hasData && CLOUD_SYNC_URL){
-        // Local fresh -> just check cloud in background (no force pull)
-        _postInit();
-        setTimeout(_autoSyncFromCloud, 2000);
-        setInterval(_autoSyncFromCloud,60000);
-        setInterval(function(){if(_cloudDirty&&!_cloudSaving){var j=JSON.stringify(_buildDataObj());_doCloudSave(j);}},30000);
-        document.addEventListener('visibilitychange',function(){if(!document.hidden)_autoSyncFromCloud();});
-        return;
+        return; // async path
     }
     if(!hasData){
     employees=JSON.parse(JSON.stringify(INITIAL_EMPLOYEES));
@@ -4735,7 +4648,7 @@ function timeDiffMinutes(t1,t2){if(!t1||!t2)return 0;var a=t1.split(':').map(Num
 function setAttSubView(mode){
     attSubView=mode;
     document.querySelectorAll('.att-subtab').forEach(function(b){b.classList.remove('active');});
-    var labels={'schedule':'Lịch làm','actual':'Giờ chấm công','convert':'Quy đổi','deviceAlert':'Cảnh báo TB'};
+    var labels={'schedule':'Lịch làm','actual':'Giờ thực','convert':'Quy đổi','deviceAlert':'Cảnh báo TB'};
     document.querySelectorAll('.att-subtab').forEach(function(b){if(b.textContent.indexOf(labels[mode])>=0)b.classList.add('active');});
     var tb=document.getElementById('attActualToolbar');
     if(tb)tb.style.display=mode==='actual'?'flex':'none';
@@ -4887,22 +4800,16 @@ function openDayDetail(dateStr){
         var dk=schedKey(dateStr,emp.id,emp.dept,emp.dept);
         var sh=schedules[dk];
         if(!sh){dk=dateStr+'-'+emp.id;sh=schedules[dk];}
-        var hasShift=sh&&sh.start&&sh.end;
-        var rawData=attTimesheetData[dk];
-        var hasPunch=rawData&&(rawData.checkin||rawData.hours);
-        if(hasShift||hasPunch){
-            var hrs=hasShift?shiftHours(sh.start,sh.end):0;
-            depts[deptIdx].emps.push({emp:emp,sh:sh||{start:'',end:''},dk:dk,hrs:hrs,raw:rawData,confirmed:attConfirmations[dk],crossDept:false});
+        if(sh&&sh.start&&sh.end){
+            var hrs=shiftHours(sh.start,sh.end);
+            depts[deptIdx].emps.push({emp:emp,sh:sh,dk:dk,hrs:hrs,raw:attTimesheetData[dk],confirmed:attConfirmations[dk],crossDept:false});
             _added[emp.id+'_'+deptIdx]=1;
         }
         ['Bếp','Phục vụ','Hỗ trợ khác'].forEach(function(dn,di){
             if(di===deptIdx||_added[emp.id+'_'+di])return;
             var dk2=schedKey(dateStr,emp.id,dn,emp.dept);var sh2=schedules[dk2];
-            var rawData2=attTimesheetData[dk2];
-            var hasShift2=sh2&&sh2.start&&sh2.end;
-            var hasPunch2=rawData2&&(rawData2.checkin||rawData2.hours);
-            if(hasShift2||hasPunch2){
-                depts[di].emps.push({emp:emp,sh:sh2||{start:'',end:''},dk:dk2,hrs:hasShift2?shiftHours(sh2.start,sh2.end):0,raw:rawData2,confirmed:attConfirmations[dk2],crossDept:true});
+            if(sh2&&sh2.start&&sh2.end){
+                depts[di].emps.push({emp:emp,sh:sh2,dk:dk2,hrs:shiftHours(sh2.start,sh2.end),raw:attTimesheetData[dk2],confirmed:attConfirmations[dk2],crossDept:true});
                 _added[emp.id+'_'+di]=1;
             }
         });
@@ -4913,7 +4820,7 @@ function openDayDetail(dateStr){
         if(!dept.emps.length)return;
         h+='<div style="margin-top:12px"><div style="background:'+dept.color+';color:white;padding:6px 12px;border-radius:6px;font-weight:700;font-size:13px"><i class="fas '+dept.icon+'"></i> '+dept.name+' ('+dept.emps.length+')</div>';
         h+='<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:4px">';
-        h+='<tr style="background:#f5f5f5"><th style="padding:6px;text-align:left;border:1px solid #eee;width:30px">NO</th><th style="padding:6px;text-align:left;border:1px solid #eee">Họ tên 姓名</th><th style="padding:6px;text-align:left;border:1px solid #eee;width:50px">Loại 類型</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:100px">Ca làm 班次</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:50px">Giờ 時數</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:90px">Giờ chấm công 打卡</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:130px;background:#fff3e0">Thời gian tính lương<br>工資時間</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:60px;background:#fff8e1">Số giờ<br>時數</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:60px">Xác nhận 確認</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:50px">Xóa ca 刪班</th></tr>';
+        h+='<tr style="background:#f5f5f5"><th style="padding:6px;text-align:left;border:1px solid #eee;width:30px">NO</th><th style="padding:6px;text-align:left;border:1px solid #eee">Họ tên 姓名</th><th style="padding:6px;text-align:left;border:1px solid #eee;width:50px">Loại 類型</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:100px">Ca làm 班次</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:50px">Giờ 時數</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:80px">Giờ thực 實際</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:60px">Xác nhận 確認</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:50px">Xóa ca 刪班</th></tr>';
         dept.emps.forEach(function(item,idx){
             var emp=item.emp,sh=item.sh,dk=item.dk;
             var sParts=sh.start.split(','),eParts=sh.end.split(',');
@@ -4936,7 +4843,7 @@ function openDayDetail(dateStr){
 var confirmBtn=item.confirmed?'<span style="color:#4caf50;font-size:16px;cursor:pointer" onclick="delete attConfirmations[\''+dk+'\'];if(!_deletedKeys.attConfirmations)_deletedKeys.attConfirmations={};_deletedKeys.attConfirmations[\''+dk+'\']=1;saveData();loadAttendance();openDayDetail(\''+dateStr+'\');" title="Bấm để hủy xác nhận 點擊取消確認">✓</span>':'<span style="color:#ccc;font-size:12px;cursor:pointer" onclick="attConfirmations[\''+dk+'\']=true;saveData();loadAttendance();openDayDetail(\''+dateStr+'\');" title="Xác nhận 確認">○</span>';
             var editBtn='<span style="cursor:pointer;color:#c62828;font-size:14px" onclick="event.stopPropagation();if(confirm(\'Xóa ca của '+emp.name.replace(/'/g,'')+ ' ngày này? 確定刪除此班次？\')){_dayDetailDel2(\''+dk+'\',\''+dateStr+'\');}" title="Xóa ca 刪除班次"><i class="fas fa-trash-alt"></i></span>';
             totalAll+=item.hrs;countAll++;
-            h+='<tr style="border-bottom:1px solid #eee;'+(item.crossDept?'background:#fff8e1':'')+'"><td style="padding:5px;text-align:center;border:1px solid #eee;color:#999;font-size:10px">'+(idx+1)+'</td><td style="padding:5px;border:1px solid #eee;font-weight:600">'+emp.name+' <span style="font-size:9px;color:var(--primary)">'+emp.nameCN+'</span>'+crossBadge+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+typeLabel+'</td><td style="padding:5px;border:1px solid #eee;text-align:center;font-weight:600;font-size:11px">'+shiftLabel+'</td><td style="padding:5px;border:1px solid #eee;text-align:center;font-weight:700;color:#2e7d32">'+item.hrs.toFixed(1)+'h</td><td style="padding:5px;border:1px solid #eee;text-align:center;font-size:10px">'+actualCell+'</td>'+_renderPayrollTimeCells(item,dk,emp.id,dateStr)+'<td style="padding:5px;border:1px solid #eee;text-align:center">'+confirmBtn+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+editBtn+'</td></tr>';
+            h+='<tr style="border-bottom:1px solid #eee;'+(item.crossDept?'background:#fff8e1':'')+'"><td style="padding:5px;text-align:center;border:1px solid #eee;color:#999;font-size:10px">'+(idx+1)+'</td><td style="padding:5px;border:1px solid #eee;font-weight:600">'+emp.name+' <span style="font-size:9px;color:var(--primary)">'+emp.nameCN+'</span>'+crossBadge+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+typeLabel+'</td><td style="padding:5px;border:1px solid #eee;text-align:center;font-weight:600;font-size:11px">'+shiftLabel+'</td><td style="padding:5px;border:1px solid #eee;text-align:center;font-weight:700;color:#2e7d32">'+item.hrs.toFixed(1)+'h</td><td style="padding:5px;border:1px solid #eee;text-align:center;font-size:10px">'+actualCell+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+confirmBtn+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+editBtn+'</td></tr>';
         });
         h+='</table></div>';
     });
@@ -4947,7 +4854,7 @@ var confirmBtn=item.confirmed?'<span style="color:#4caf50;font-size:16px;cursor:
     h+='</div></div>';
     // Show modal
     var modal=document.getElementById('dayDetailModal');
-    if(!modal){modal=document.createElement('div');modal.id='dayDetailModal';modal.className='modal';modal.innerHTML='<div class="modal-content" style="max-width:1100px"><div class="modal-header" id="dayDetailHeader"></div><div class="modal-body" id="dayDetailBody"></div></div>';document.body.appendChild(modal);modal.addEventListener('click',function(e){if(e.target===modal)modal.classList.remove('active');});}
+    if(!modal){modal=document.createElement('div');modal.id='dayDetailModal';modal.className='modal';modal.innerHTML='<div class="modal-content" style="max-width:850px"><div class="modal-header" id="dayDetailHeader"></div><div class="modal-body" id="dayDetailBody"></div></div>';document.body.appendChild(modal);modal.addEventListener('click',function(e){if(e.target===modal)modal.classList.remove('active');});}
     document.getElementById('dayDetailHeader').innerHTML='<span style="font-size:16px;font-weight:700">📅 Chi tiết ngày 日期詳情: '+dayLabel+holBadge+'</span><span class="close-btn" onclick="document.getElementById(\'dayDetailModal\').classList.remove(\'active\')" style="cursor:pointer;font-size:20px;float:right">&times;</span>';
     document.getElementById('dayDetailBody').innerHTML=h;
     modal.classList.add('active');
@@ -5003,7 +4910,7 @@ function _dayDetailEdit(dk,empId,dateStr){
     h+='<span>→</span>';
     h+='<input type="text" id="_ddeEnd" value="'+endVal+'" placeholder="VD: 23:00 hoặc 14:00,23:00" style="padding:6px;border:1px solid #ddd;border-radius:4px;width:160px;font-size:12px">';
     h+='</div>';
-    h+='<b>Giờ chấm công tế 實際時間:</b><br>';
+    h+='<b>Giờ thực tế 實際時間:</b><br>';
     h+='<div style="display:flex;gap:8px;margin:6px 0;align-items:center">';
     h+='<input type="text" id="_ddeCheckin" value="'+(raw.checkin||'')+'" placeholder="Check-in (VD: 17:55)" style="padding:6px;border:1px solid #ddd;border-radius:4px;width:120px;font-size:12px">';
     h+='<span>→</span>';
@@ -5172,20 +5079,18 @@ function buildAttConvertFT(title,cls,emps,dateList,mi){
         dateList.forEach(function(d){
             var day=d.getDate();
             var dk=schedKey(mi+'-'+String(day).padStart(2,'0'),emp.id,_attDept,emp._originalDept||emp.dept);
-            var sh=schedules[dk];var raw=(typeof _payrollRaw==='function')?_payrollRaw(dk):attTimesheetData[dk];
-            var actualHrs=raw&&raw.hours?raw.hours:0;
-            if(actualHrs>0&&sh&&sh.start&&typeof _payrollHours==='function')actualHrs=_payrollHours(raw,sh);
-            var hrs=actualHrs||(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
+            var sh=schedules[dk];var raw=attTimesheetData[dk];
+            var hrs=raw&&raw.hours?raw.hours:(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
             var nc=0,ot=0,le=0,pn=0,vr=0,kp=0,late2=0;
             var ovr=attConvertOverrides[dk]||{};
             var attV=attendanceData[dk]||'';var vu=attV.toUpperCase();
             var _dateStr=mi+'-'+String(day).padStart(2,'0');
             var _holMul=getHolidayMultiplier(_dateStr);
-            if(false){/*disabled stuck ovr.nc/ot*/}
+            if(ovr.nc!==undefined){nc=ovr.nc;if(ovr.ot===undefined&&hrs>ws.standardHours){ot=hrs-ws.standardHours;}}
             else if(vu==='L'||(_holMul>0&&hrs>0)){if(emp.wageType==='monthly_fixed'){le=ws.effectiveHours||effH;}else if(emp.type==='Fulltime'){var _leEff2=hrs>=ws.standardHours?(ws.effectiveHours||effH):Math.max(0,hrs-(ws.breakHours||0));le=_leEff2;if(hrs>ws.standardHours){ot=hrs-ws.standardHours;}}else{le=hrs>0?hrs:0;}}
             else if(vu==='X'||vu==='P'){pn=1;}
             else if(vu==='KP'){kp=1;}
-            else if(hrs>0){nc=hrs;if(sh&&sh.start&&hrs>=ws.standardHours){ot=hrs-ws.standardHours;nc=ws.effectiveHours||effH;}else if(sh&&sh.start){nc=Math.max(0,hrs-(ws.breakHours||0));}}
+            else if(hrs>0){nc=hrs;if(hrs>=ws.standardHours){ot=hrs-ws.standardHours;nc=ws.effectiveHours||effH;}else{nc=Math.max(0,hrs-(ws.breakHours||0));}}
             /* removed ovr.ot stuck */
             if(ovr.le!==undefined)le=ovr.le;
             if(ovr.pn!==undefined)pn=ovr.pn;
@@ -5274,10 +5179,8 @@ function buildAttConvertPT(title,cls,emps,dateList,mi){
             var day=d.getDate();
             var dk=schedKey(mi+'-'+String(day).padStart(2,'0'),emp.id,_attDept,emp._originalDept||emp.dept);
             var dateStr=mi+'-'+String(day).padStart(2,'0');
-            var sh=schedules[dk];var raw=(typeof _payrollRaw==='function')?_payrollRaw(dk):attTimesheetData[dk];
-            var actualHrs=raw&&raw.hours?raw.hours:0;
-            if(actualHrs>0&&sh&&sh.start&&typeof _payrollHours==='function')actualHrs=_payrollHours(raw,sh);
-            var hrs=actualHrs||(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
+            var sh=schedules[dk];var raw=attTimesheetData[dk];
+            var hrs=raw&&raw.hours?raw.hours:(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
             var attV=attendanceData[dk]||'';var vu=attV.toUpperCase();
             var gc=0,le=0;
             var ovr=attConvertOverrides[dk]||{};
@@ -5546,7 +5449,7 @@ function showShiftDropdown(td){
     // === GIỜ THỰC TẾ ===
     var rawAtt=attTimesheetData[dk];
     h+='<div style="margin-top:8px;padding-top:6px;border-top:2px solid #e0e0e0">';
-    h+='<div style="font-size:10px;font-weight:700;color:#1565c0;margin-bottom:4px"><i class="fas fa-user-clock"></i> Giờ chấm công tế</div>';
+    h+='<div style="font-size:10px;font-weight:700;color:#1565c0;margin-bottom:4px"><i class="fas fa-user-clock"></i> Giờ thực tế</div>';
     if(rawAtt&&rawAtt.checkin){
         h+='<div style="font-size:9px;color:#666;margin-bottom:3px">Hiện tại: <b style="color:#1565c0">'+rawAtt.checkin+'</b> → <b style="color:#c62828">'+(rawAtt.checkout||'?')+'</b> = <b style="color:#2e7d32">'+(rawAtt.hours||0)+'h</b></div>';
     }
@@ -5616,7 +5519,7 @@ function showShiftDropdown(td){
             }
             attTimesheetData[dk]={checkin:firstIn,checkout:lastOut,hours:totalHrs,segments:segments};
             saveData();loadAttendance();closeShiftDropdown();
-            showSuccess('Giờ chấm công 打卡: '+firstIn+'→'+lastOut+' ('+totalHrs.toFixed(1)+'h)');
+            showSuccess('Giờ thực 實際: '+firstIn+'→'+lastOut+' ('+totalHrs.toFixed(1)+'h)');
         });
     }
     var actualClearBtn=dd.querySelector('#sdActualClearBtn');
@@ -6029,20 +5932,18 @@ function exportAttendance(){
         dateList.forEach(function(dd){
             var day=dd.getDate();
             var dk=schedKey(mi+'-'+String(day).padStart(2,'0'),emp.id,_attDept,emp._originalDept||emp.dept);
-            var sh=schedules[dk];var raw=(typeof _payrollRaw==='function')?_payrollRaw(dk):attTimesheetData[dk];
-            var actualHrs=raw&&raw.hours?raw.hours:0;
-            if(actualHrs>0&&sh&&sh.start&&typeof _payrollHours==='function')actualHrs=_payrollHours(raw,sh);
-            var hrs=actualHrs||(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
+            var sh=schedules[dk];var raw=attTimesheetData[dk];
+            var hrs=raw&&raw.hours?raw.hours:(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
             var nc=0,ot=0,le=0,pn=0,vr=0,kp=0,late2=0;
             var ovr=attConvertOverrides[dk]||{};
             var attV=attendanceData[dk]||'';var vu=attV.toUpperCase();
             var _dateStr=mi+'-'+String(day).padStart(2,'0');
             var _holMul=getHolidayMultiplier(_dateStr);
-            if(false){/*disabled stuck ovr.nc/ot*/}
+            if(ovr.nc!==undefined){nc=ovr.nc;if(ovr.ot===undefined&&hrs>ws.standardHours){ot=hrs-ws.standardHours;}}
             else if(vu==='L'||(_holMul>0&&hrs>0)){if(emp.wageType==='monthly_fixed'){le=ws.effectiveHours||effH;}else if(emp.type==='Fulltime'){var _leEff2=hrs>=ws.standardHours?(ws.effectiveHours||effH):Math.max(0,hrs-(ws.breakHours||0));le=_leEff2;if(hrs>ws.standardHours){ot=hrs-ws.standardHours;}}else{le=hrs>0?hrs:0;}}
             else if(vu==='X'||vu==='P'){pn=1;}
             else if(vu==='KP'){kp=1;}
-            else if(hrs>0){nc=hrs;if(sh&&sh.start&&hrs>=ws.standardHours){ot=hrs-ws.standardHours;nc=ws.effectiveHours||effH;}else if(sh&&sh.start){nc=Math.max(0,hrs-(ws.breakHours||0));}}
+            else if(hrs>0){nc=hrs;if(hrs>=ws.standardHours){ot=hrs-ws.standardHours;nc=ws.effectiveHours||effH;}else{nc=Math.max(0,hrs-(ws.breakHours||0));}}
             /* removed ovr.ot stuck */
             if(ovr.le!==undefined)le=ovr.le;
             if(ovr.pn!==undefined)pn=ovr.pn;
@@ -7111,14 +7012,22 @@ function getEffSalary(emp,mi){
 function _payrollRaw(dk){
     var bc=attBossConfirmations[dk];
     if(bc){
+        if(bc.status==='off')return null; // OFF -> khong tinh luong ngay nay
+        if(bc.hours>0||bc.checkin)return {checkin:bc.checkin,checkout:bc.checkout,hours:bc.hours,segments:bc.segments,fromBoss:true};
+    }
+    return attTimesheetData[dk];
+}
+// Helper: lay raw timesheet cho payroll. Uu tien gio Boss XN tu BossConfirm (attBossConfirmations),
+// fallback ve gio cham cong goc (attTimesheetData).
+function _payrollRaw(dk){
+    var bc=(typeof attBossConfirmations!=='undefined')?attBossConfirmations[dk]:null;
+    if(bc){
         if(bc.status==='off')return null;
         if(bc.hours>0||bc.checkin)return {checkin:bc.checkin,checkout:bc.checkout,hours:bc.hours,segments:bc.segments,fromBoss:true};
     }
     return attTimesheetData[dk];
 }
-// Quy tac lam tron Boss (5 phut):
-// VAO: som hoac tre <=5p -> lich. Tre >5p -> punch.
-// RA: som -> punch (boss xu ly). Muon <=5p -> lich. Muon >5p -> punch.
+// Lam tron co chon loc theo quy tac cua Boss:
 function _roundPunchForBoss(punchTime, schedTime, isStart){
     if(!punchTime||!schedTime)return punchTime||'';
     var p=String(punchTime).match(/(\d{1,2}):(\d{1,2})/);
@@ -7127,12 +7036,11 @@ function _roundPunchForBoss(punchTime, schedTime, isStart){
     var pad=function(n){return String(n).padStart(2,'0');};
     var pMin=parseInt(p[1])*60+parseInt(p[2]);
     var sMin=parseInt(s[1])*60+parseInt(s[2]);
-    var diff=pMin-sMin; // > 0 = punch later than sched
+    var diff=pMin-sMin;
     var sStr=pad(parseInt(s[1]))+':'+pad(parseInt(s[2]));
     var pStr=pad(parseInt(p[1]))+':'+pad(parseInt(p[2]));
     var THRESHOLD=5;
     if(isStart){
-        if(diff<=0)return sStr;
         if(diff<=THRESHOLD)return sStr;
         return pStr;
     } else {
@@ -7141,119 +7049,12 @@ function _roundPunchForBoss(punchTime, schedTime, isStart){
         return pStr;
     }
 }
-// Tinh gio luong sau khi ap dung round-rule + split-shift adjustment
-function _payrollHours(raw, sh){
-    if(!raw||!raw.checkin)return raw&&raw.hours?raw.hours:0;
-    var rawIn=raw.checkin;
-    var rawOut=raw.checkout||'';
-    if(sh&&sh.start&&sh.end){
-        var startSegs=String(sh.start).split(',');
-        var endSegs=String(sh.end).split(',');
-        var schedStart=startSegs[0].trim();
-        var schedEnd=endSegs[endSegs.length-1].trim();
-        var rIn=_roundPunchForBoss(rawIn,schedStart,true);
-        var rOut=_roundPunchForBoss(rawOut,schedEnd,false);
-        // Compute hours from rounded times
-        var pi=rIn.match(/(\d{1,2}):(\d{1,2})/);
-        var po=rOut.match(/(\d{1,2}):(\d{1,2})/);
-        if(pi&&po){
-            var hi=parseInt(pi[1])*60+parseInt(pi[2]);
-            var ho=parseInt(po[1])*60+parseInt(po[2]);
-            var diff=ho-hi;
-            if(diff<0)diff+=24*60; // qua dem
-            var hrs=diff/60;
-            // Apply split-shift gap adjustment
-            hrs=_adjustHoursForSplitShift(hrs, sh, raw);
-            return Math.round(hrs*100)/100;
-        }
-    }
-    return raw.hours||0;
-}
-// Render 2 cells: Thoi gian tinh luong (editable) + So gio (computed)
-function _renderPayrollTimeCells(item, dk, empId, dateStr){
-    var sh=item.sh, raw=item.raw;
-    // Lay gio luong: uu tien attBossConfirmations (Boss da chinh tay), neu khong thi auto-round
-    var bc=(typeof attBossConfirmations!=='undefined')?attBossConfirmations[dk]:null;
-    var pIn='', pOut='', pHrs=0;
-    if(bc&&bc.status!=='off'&&(bc.checkin||bc.checkout)){
-        // Boss da chinh tay
-        pIn=bc.checkin||''; pOut=bc.checkout||'';
-        pHrs=bc.hours||_payrollHours({checkin:pIn,checkout:pOut,segments:bc.segments},sh);
-    } else if(raw&&raw.checkin&&sh&&sh.start){
-        // Auto-round
-        var startSegs=String(sh.start).split(',');
-        var endSegs=String(sh.end||'').split(',');
-        pIn=_roundPunchForBoss(raw.checkin,startSegs[0].trim(),true);
-        pOut=_roundPunchForBoss(raw.checkout||'',endSegs[endSegs.length-1].trim(),false);
-        pHrs=_payrollHours(raw,sh);
-    }
-    var timeId='_pt_'+dk.replace(/[^a-zA-Z0-9]/g,'_');
-    var hrsId='_ph_'+dk.replace(/[^a-zA-Z0-9]/g,'_');
-    var hoursDisplay=pHrs>0?(Math.round(pHrs*10)/10).toFixed(1)+'h':'-';
-    var timeDisplay=(pIn&&pOut)?(pIn+' → '+pOut):'-';
-    var timeBadge=(bc&&(bc.checkin||bc.checkout))?'<span style="font-size:8px;background:#8B0000;color:white;padding:1px 3px;border-radius:2px;margin-left:3px">B</span>':'';
-    return '<td id="'+timeId+'" style="padding:5px;border:1px solid #eee;text-align:center;background:#fff3e0;cursor:pointer" onclick="event.stopPropagation();_payrollTimeInlineEdit(this,\''+dk+'\',\''+empId+'\',\''+dateStr+'\')" title="Bam de chinh"><span style="font-weight:600;color:#bf360c;font-size:11px">'+timeDisplay+'</span>'+timeBadge+'</td>'+
-           '<td id="'+hrsId+'" style="padding:5px;border:1px solid #eee;text-align:center;background:#fff8e1;font-weight:700;color:#e65100">'+hoursDisplay+'</td>';
-}
-function _payrollTimeInlineEdit(el, dk, empId, dateStr){
-    var bc=attBossConfirmations[dk]||{};
-    var raw=attTimesheetData[dk]||{};
-    var curIn=bc.checkin||raw.checkin||'';
-    var curOut=bc.checkout||raw.checkout||'';
-    el.onclick=null;
-    el.innerHTML='<div style="display:flex;flex-direction:column;gap:3px;align-items:center">'
-        +'<input id="_ptIn" type="text" value="'+curIn+'" placeholder="vao" style="width:55px;padding:3px;border:1px solid #1976d2;border-radius:3px;font-size:11px;text-align:center">'
-        +'<input id="_ptOut" type="text" value="'+curOut+'" placeholder="ra" style="width:55px;padding:3px;border:1px solid #1976d2;border-radius:3px;font-size:11px;text-align:center">'
-        +'<div style="display:flex;gap:3px"><button onclick="_payrollTimeSave(\''+dk+'\',\''+empId+'\',\''+dateStr+'\');" style="padding:2px 8px;background:#4caf50;color:white;border:none;border-radius:3px;font-size:9px;cursor:pointer">✓</button>'
-        +'<button onclick="openDayDetail(\''+dateStr+'\');" style="padding:2px 8px;background:#999;color:white;border:none;border-radius:3px;font-size:9px;cursor:pointer">✗</button></div></div>';
-    var inp=document.getElementById('_ptIn');if(inp)inp.focus();
-}
-function _payrollTimeSave(dk, empId, dateStr){
-    var vIn=(document.getElementById('_ptIn')||{}).value;
-    var vOut=(document.getElementById('_ptOut')||{}).value;
-    vIn=(vIn||'').trim();vOut=(vOut||'').trim();
-    var hrs=0;
-    var sh=schedules[dk];
-    if(vIn&&vOut){
-        var pi=vIn.match(/(\d{1,2}):?(\d{0,2})/);
-        var po=vOut.match(/(\d{1,2}):?(\d{0,2})/);
-        if(pi&&po){
-            var pad=function(n){return String(n||0).padStart(2,'0');};
-            vIn=pad(pi[1])+':'+pad(pi[2]||'00');
-            vOut=pad(po[1])+':'+pad(po[2]||'00');
-            var hi=parseInt(pi[1])*60+parseInt(pi[2]||0);
-            var ho=parseInt(po[1])*60+parseInt(po[2]||0);
-            var diff=ho-hi;if(diff<0)diff+=24*60;
-            hrs=diff/60;
-            // Split-shift adjustment
-            hrs=_adjustHoursForSplitShift(hrs,sh,attTimesheetData[dk]);
-            hrs=Math.round(hrs*100)/100;
-        }
-    }
-    if(vIn||vOut){
-        attBossConfirmations[dk]={
-            status:'confirmed',
-            checkin:vIn,checkout:vOut,hours:hrs,
-            note:'Boss chinh tay (QLNV)',
-            syncedAt:new Date().toISOString()
-        };
-        attConfirmations[dk]=true;
-    } else {
-        // Clear -> remove override
-        delete attBossConfirmations[dk];
-    }
-    saveData();openDayDetail(dateStr);
-    if(typeof loadAttendance==='function')loadAttendance();
-    if(typeof loadPayroll==='function')loadPayroll();
-    showSuccess('Da luu thoi gian tinh luong: '+(vIn||'-')+' -> '+(vOut||'-')+' = '+hrs.toFixed(1)+'h');
-}
-// Helper: ca gay (split shift) - NV punch lien tuc 1 pair ma lich co split -> tru gap break
 function _adjustHoursForSplitShift(hrs, sh, raw){
     if(!sh||!sh.start)return hrs;
     if(typeof sh.start!=='string'||sh.start.indexOf(',')<0)return hrs;
     if(!raw||!raw.checkin)return hrs;
     if(raw.segments && raw.segments.length>=2)return hrs;
-    var schedStarts=sh.start.split(',');
+    var schedStarts=String(sh.start).split(',');
     var schedEnds=(sh.end||'').split(',');
     var gap=0;
     for(var k=1;k<schedStarts.length;k++){
@@ -7270,6 +7071,31 @@ function _adjustHoursForSplitShift(hrs, sh, raw){
     }
     return Math.max(0, hrs - gap);
 }
+function _payrollHours(raw, sh){
+    if(!raw||!raw.checkin)return raw&&raw.hours?raw.hours:0;
+    var rawIn=raw.checkin;
+    var rawOut=raw.checkout||'';
+    if(sh&&sh.start&&sh.end){
+        var startSegs=String(sh.start).split(',');
+        var endSegs=String(sh.end).split(',');
+        var ss=startSegs[0].trim();
+        var se=endSegs[endSegs.length-1].trim();
+        var rIn=_roundPunchForBoss(rawIn,ss,true);
+        var rOut=_roundPunchForBoss(rawOut,se,false);
+        var pi=rIn.match(/(\d{1,2}):(\d{1,2})/);
+        var po=rOut.match(/(\d{1,2}):(\d{1,2})/);
+        if(pi&&po){
+            var hi=parseInt(pi[1])*60+parseInt(pi[2]);
+            var ho=parseInt(po[1])*60+parseInt(po[2]);
+            var diff=ho-hi;
+            if(diff<0)diff+=24*60;
+            var hrs=diff/60;
+            hrs=_adjustHoursForSplitShift(hrs, sh, raw);
+            return Math.round(hrs*100)/100;
+        }
+    }
+    return raw.hours||0;
+}
 function getPayrollData(emp,mi){
     var ovr=payrollOverrides[mi+'-'+emp.id]||{};
     var days=new Date(parseInt(mi.split('-')[0]),parseInt(mi.split('-')[1]),0).getDate();
@@ -7284,13 +7110,11 @@ function getPayrollData(emp,mi){
         var sh=schedules[dk];var raw=_payrollRaw(dk);
         var schedHrs=sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0;
         var actualHrs=raw&&raw.hours?raw.hours:0;
-        // Ap quy tac lam tron Boss 5p cho moi NV
-        if(actualHrs>0&&sh&&sh.start) actualHrs=_payrollHours(raw,sh);
         var hrs=actualHrs||schedHrs;
         var attV=attendanceData[dk]||'';var vu=attV.toUpperCase();
         var holMul=getHolidayMultiplier(dateStr);
         var nc=0,ot=0,le=0;
-        if(false){/*disabled covr.nc*/}
+        if(covr.nc!==undefined){nc=covr.nc;if(covr.ot===undefined&&emp.type==='Fulltime'&&hrs>ws.standardHours){ot=hrs-ws.standardHours;}}
         else if(vu==='L'){le=1;}
         else if(holMul>0&&hrs>0){
             var _holHrs=emp.type==='Fulltime'?hrs:Math.round(hrs*10)/10;
@@ -7328,11 +7152,13 @@ function getPayrollDataForDept(emp,mi,targetDept){
         var dk=schedKey(_dateBase,emp.id,targetDept,emp.dept);
         var sh=schedules[dk];
         if(!sh||!sh.start){
+            // Fallback: try old format key (backward compat with old data)
             var dkOld=_dateBase+'-'+emp.id;
-            var dayDept=scheduleDepts[dkOld];
-            if(dayDept===targetDept){
-                sh=schedules[dkOld];
-                if(sh&&sh.start) dk=dkOld;
+            sh=schedules[dkOld];
+            if(sh&&sh.start){
+                var dayDept=scheduleDepts[dkOld];
+                if(dayDept&&dayDept!==targetDept){sh=null;}
+                else{dk=dkOld;}
             }
         }
         if(!sh||!sh.start)continue;
@@ -7340,12 +7166,11 @@ function getPayrollDataForDept(emp,mi,targetDept){
         var raw=_payrollRaw(dk);
         var schedHrs=getScheduleHours(emp.id,dk);
         var actualHrs=raw&&raw.hours?raw.hours:0;
-        if(actualHrs>0&&sh&&sh.start) actualHrs=_payrollHours(raw,sh);
         var hrs=actualHrs||schedHrs;
         var attV=attendanceData[dk]||'';var vu=attV.toUpperCase();
         var holMul=getHolidayMultiplier(dateStr);
         var nc=0,ot=0,le=0;
-        if(false){/*disabled covr.nc*/}
+        if(covr.nc!==undefined){nc=covr.nc;if(covr.ot===undefined&&emp.type==='Fulltime'&&hrs>ws.standardHours){ot=hrs-ws.standardHours;}}
         else if(vu==='L'){le=1;}
         else if(holMul>0&&hrs>0){var _holHrs2=emp.type==='Fulltime'?hrs:Math.round(hrs*10)/10;leTotal+=1;leHrsTotal+=_holHrs2;
             if(emp.type==='Fulltime'){if(hrs>ws.standardHours){otTotal+=hrs-ws.standardHours;}}
@@ -9805,7 +9630,7 @@ function exportAttendanceExcel(){_ensureXLSX(function(){
     ws1['!cols']=c1;
     XLSX.utils.book_append_sheet(wb,ws1,'Lịch làm');
 
-    // Sheet 2: Giờ chấm công tế
+    // Sheet 2: Giờ thực tế
     var h2=[['Mã NV','Họ tên','BP','Chức vụ']];
     dateList.forEach(function(dd){h2[0].push(dayNames[dd.getDay()]+' '+dd.getDate()+'/'+m);});
     h2[0].push('Tổng giờ');
@@ -9829,7 +9654,7 @@ function exportAttendanceExcel(){_ensureXLSX(function(){
     var ws2=XLSX.utils.aoa_to_sheet(h2);
     var c2=[{wch:10},{wch:16},{wch:10},{wch:14}];for(var i=0;i<days;i++)c2.push({wch:16});c2.push({wch:8});
     ws2['!cols']=c2;
-    XLSX.utils.book_append_sheet(wb,ws2,'Giờ chấm công tế');
+    XLSX.utils.book_append_sheet(wb,ws2,'Giờ thực tế');
 
     // Sheet 3: Quy đổi
     var h3=[['Mã NV','Họ tên','BP','Chức vụ','Loại','Dòng']];
@@ -9844,10 +9669,8 @@ function exportAttendanceExcel(){_ensureXLSX(function(){
         dateList.forEach(function(dd){
             var day=dd.getDate();
             var dk=schedKey(mi+'-'+String(day).padStart(2,'0'),emp.id,_attDept,emp._originalDept||emp.dept);
-            var sh=schedules[dk];var raw=(typeof _payrollRaw==='function')?_payrollRaw(dk):attTimesheetData[dk];
-            var actualHrs=raw&&raw.hours?raw.hours:0;
-            if(actualHrs>0&&sh&&sh.start&&typeof _payrollHours==='function')actualHrs=_payrollHours(raw,sh);
-            var hrs=actualHrs||(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
+            var sh=schedules[dk];var raw=attTimesheetData[dk];
+            var hrs=raw&&raw.hours?raw.hours:(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
             var nc=0,ot=0,le=0,pn=0,vr=0,kp=0,late2=0;
             var ovr=attConvertOverrides[dk]||{};
             var attV=attendanceData[dk]||'';var vu=attV.toUpperCase();
