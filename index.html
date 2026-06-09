@@ -1141,10 +1141,10 @@ function _doCloudSave(jsonStr){
         var checkData=JSON.parse(jsonStr);
         var empCount=(checkData.employees||[]).length;
         var schedCount=Object.keys(checkData.schedules||{}).length;
-        // Neu < 3 NV VA < 10 schedule entries -> co the la default/empty, KHONG save
-        if(empCount<3 && schedCount<10){
-            console.warn('Cloud save SKIPPED: data too small ('+empCount+' NV, '+schedCount+' schedules). Avoid overwriting cloud.');
-            _updateSyncStatus('error','Data qua nho, khong save de tranh mat data cloud');
+        // STRICT GUARD: block neu empty 1 trong 2 (NV hoac schedules) - tranh ghi de mat data
+        if(empCount<3 || schedCount<10){
+            console.warn('Cloud save BLOCKED: data too small ('+empCount+' NV, '+schedCount+' schedules). Avoid overwriting cloud.');
+            _updateSyncStatus('error','BLOCKED: data ('+empCount+'NV, '+schedCount+' lich) qua nho - KHONG luu de bao ve cloud');
             return;
         }
     } catch(ge){ console.warn('Guard check failed:',ge); }
