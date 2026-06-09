@@ -436,7 +436,7 @@ td.cell-selected{outline:3px solid #ff6f00 !important;outline-offset:-2px;box-sh
         </div>
         <div class="att-subtabs" id="attSubTabs">
             <button class="att-subtab active" onclick="setAttSubView('schedule')"><i class="fas fa-calendar-check"></i> Lịch làm 排班</button>
-            <button class="att-subtab" onclick="setAttSubView('actual')"><i class="fas fa-clock"></i> Giờ thực 實際時數</button>
+            <button class="att-subtab" onclick="setAttSubView('actual')"><i class="fas fa-clock"></i> Giờ chấm công 打卡時數</button>
             <button class="att-subtab" onclick="setAttSubView('convert')"><i class="fas fa-exchange-alt"></i> Quy đổi 換算</button>
             <button class="att-subtab" onclick="setAttSubView('deviceAlert')" id="btnDeviceAlertTab"><i class="fas fa-exclamation-triangle"></i> Cảnh báo TB 設備警報<span id="daAlertBadge" class="device-alert-badge" style="display:none">0</span></button>
         </div>
@@ -4648,7 +4648,7 @@ function timeDiffMinutes(t1,t2){if(!t1||!t2)return 0;var a=t1.split(':').map(Num
 function setAttSubView(mode){
     attSubView=mode;
     document.querySelectorAll('.att-subtab').forEach(function(b){b.classList.remove('active');});
-    var labels={'schedule':'Lịch làm','actual':'Giờ thực','convert':'Quy đổi','deviceAlert':'Cảnh báo TB'};
+    var labels={'schedule':'Lịch làm','actual':'Giờ chấm công','convert':'Quy đổi','deviceAlert':'Cảnh báo TB'};
     document.querySelectorAll('.att-subtab').forEach(function(b){if(b.textContent.indexOf(labels[mode])>=0)b.classList.add('active');});
     var tb=document.getElementById('attActualToolbar');
     if(tb)tb.style.display=mode==='actual'?'flex':'none';
@@ -4820,7 +4820,7 @@ function openDayDetail(dateStr){
         if(!dept.emps.length)return;
         h+='<div style="margin-top:12px"><div style="background:'+dept.color+';color:white;padding:6px 12px;border-radius:6px;font-weight:700;font-size:13px"><i class="fas '+dept.icon+'"></i> '+dept.name+' ('+dept.emps.length+')</div>';
         h+='<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:4px">';
-        h+='<tr style="background:#f5f5f5"><th style="padding:6px;text-align:left;border:1px solid #eee;width:30px">NO</th><th style="padding:6px;text-align:left;border:1px solid #eee">Họ tên 姓名</th><th style="padding:6px;text-align:left;border:1px solid #eee;width:50px">Loại 類型</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:100px">Ca làm 班次</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:50px">Giờ 時數</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:80px">Giờ thực 實際</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:60px">Xác nhận 確認</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:50px">Xóa ca 刪班</th></tr>';
+        h+='<tr style="background:#f5f5f5"><th style="padding:6px;text-align:left;border:1px solid #eee;width:30px">NO</th><th style="padding:6px;text-align:left;border:1px solid #eee">Họ tên 姓名</th><th style="padding:6px;text-align:left;border:1px solid #eee;width:50px">Loại 類型</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:100px">Ca làm 班次</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:50px">Giờ 時數</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:90px">Giờ chấm công 打卡</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:130px;background:#fff3e0">Thời gian tính lương<br>工資時間</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:60px;background:#fff8e1">Số giờ<br>時數</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:60px">Xác nhận 確認</th><th style="padding:6px;text-align:center;border:1px solid #eee;width:50px">Xóa ca 刪班</th></tr>';
         dept.emps.forEach(function(item,idx){
             var emp=item.emp,sh=item.sh,dk=item.dk;
             var sParts=sh.start.split(','),eParts=sh.end.split(',');
@@ -4843,7 +4843,7 @@ function openDayDetail(dateStr){
 var confirmBtn=item.confirmed?'<span style="color:#4caf50;font-size:16px;cursor:pointer" onclick="delete attConfirmations[\''+dk+'\'];if(!_deletedKeys.attConfirmations)_deletedKeys.attConfirmations={};_deletedKeys.attConfirmations[\''+dk+'\']=1;saveData();loadAttendance();openDayDetail(\''+dateStr+'\');" title="Bấm để hủy xác nhận 點擊取消確認">✓</span>':'<span style="color:#ccc;font-size:12px;cursor:pointer" onclick="attConfirmations[\''+dk+'\']=true;saveData();loadAttendance();openDayDetail(\''+dateStr+'\');" title="Xác nhận 確認">○</span>';
             var editBtn='<span style="cursor:pointer;color:#c62828;font-size:14px" onclick="event.stopPropagation();if(confirm(\'Xóa ca của '+emp.name.replace(/'/g,'')+ ' ngày này? 確定刪除此班次？\')){_dayDetailDel2(\''+dk+'\',\''+dateStr+'\');}" title="Xóa ca 刪除班次"><i class="fas fa-trash-alt"></i></span>';
             totalAll+=item.hrs;countAll++;
-            h+='<tr style="border-bottom:1px solid #eee;'+(item.crossDept?'background:#fff8e1':'')+'"><td style="padding:5px;text-align:center;border:1px solid #eee;color:#999;font-size:10px">'+(idx+1)+'</td><td style="padding:5px;border:1px solid #eee;font-weight:600">'+emp.name+' <span style="font-size:9px;color:var(--primary)">'+emp.nameCN+'</span>'+crossBadge+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+typeLabel+'</td><td style="padding:5px;border:1px solid #eee;text-align:center;font-weight:600;font-size:11px">'+shiftLabel+'</td><td style="padding:5px;border:1px solid #eee;text-align:center;font-weight:700;color:#2e7d32">'+item.hrs.toFixed(1)+'h</td><td style="padding:5px;border:1px solid #eee;text-align:center;font-size:10px">'+actualCell+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+confirmBtn+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+editBtn+'</td></tr>';
+            h+='<tr style="border-bottom:1px solid #eee;'+(item.crossDept?'background:#fff8e1':'')+'"><td style="padding:5px;text-align:center;border:1px solid #eee;color:#999;font-size:10px">'+(idx+1)+'</td><td style="padding:5px;border:1px solid #eee;font-weight:600">'+emp.name+' <span style="font-size:9px;color:var(--primary)">'+emp.nameCN+'</span>'+crossBadge+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+typeLabel+'</td><td style="padding:5px;border:1px solid #eee;text-align:center;font-weight:600;font-size:11px">'+shiftLabel+'</td><td style="padding:5px;border:1px solid #eee;text-align:center;font-weight:700;color:#2e7d32">'+item.hrs.toFixed(1)+'h</td><td style="padding:5px;border:1px solid #eee;text-align:center;font-size:10px">'+actualCell+'</td>'+_renderPayrollTimeCells(item,dk,emp.id,dateStr)+'<td style="padding:5px;border:1px solid #eee;text-align:center">'+confirmBtn+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+editBtn+'</td></tr>';
         });
         h+='</table></div>';
     });
@@ -4854,7 +4854,7 @@ var confirmBtn=item.confirmed?'<span style="color:#4caf50;font-size:16px;cursor:
     h+='</div></div>';
     // Show modal
     var modal=document.getElementById('dayDetailModal');
-    if(!modal){modal=document.createElement('div');modal.id='dayDetailModal';modal.className='modal';modal.innerHTML='<div class="modal-content" style="max-width:850px"><div class="modal-header" id="dayDetailHeader"></div><div class="modal-body" id="dayDetailBody"></div></div>';document.body.appendChild(modal);modal.addEventListener('click',function(e){if(e.target===modal)modal.classList.remove('active');});}
+    if(!modal){modal=document.createElement('div');modal.id='dayDetailModal';modal.className='modal';modal.innerHTML='<div class="modal-content" style="max-width:1100px"><div class="modal-header" id="dayDetailHeader"></div><div class="modal-body" id="dayDetailBody"></div></div>';document.body.appendChild(modal);modal.addEventListener('click',function(e){if(e.target===modal)modal.classList.remove('active');});}
     document.getElementById('dayDetailHeader').innerHTML='<span style="font-size:16px;font-weight:700">📅 Chi tiết ngày 日期詳情: '+dayLabel+holBadge+'</span><span class="close-btn" onclick="document.getElementById(\'dayDetailModal\').classList.remove(\'active\')" style="cursor:pointer;font-size:20px;float:right">&times;</span>';
     document.getElementById('dayDetailBody').innerHTML=h;
     modal.classList.add('active');
@@ -4910,7 +4910,7 @@ function _dayDetailEdit(dk,empId,dateStr){
     h+='<span>→</span>';
     h+='<input type="text" id="_ddeEnd" value="'+endVal+'" placeholder="VD: 23:00 hoặc 14:00,23:00" style="padding:6px;border:1px solid #ddd;border-radius:4px;width:160px;font-size:12px">';
     h+='</div>';
-    h+='<b>Giờ thực tế 實際時間:</b><br>';
+    h+='<b>Giờ chấm công tế 實際時間:</b><br>';
     h+='<div style="display:flex;gap:8px;margin:6px 0;align-items:center">';
     h+='<input type="text" id="_ddeCheckin" value="'+(raw.checkin||'')+'" placeholder="Check-in (VD: 17:55)" style="padding:6px;border:1px solid #ddd;border-radius:4px;width:120px;font-size:12px">';
     h+='<span>→</span>';
@@ -5079,18 +5079,19 @@ function buildAttConvertFT(title,cls,emps,dateList,mi){
         dateList.forEach(function(d){
             var day=d.getDate();
             var dk=schedKey(mi+'-'+String(day).padStart(2,'0'),emp.id,_attDept,emp._originalDept||emp.dept);
-            var sh=schedules[dk];var raw=attTimesheetData[dk];
-            var hrs=raw&&raw.hours?raw.hours:(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
+            var sh=schedules[dk];var raw=_payrollRaw(dk);
+            var _adjHrsFT=raw?_payrollHours(raw,sh):0;
+            var hrs=_adjHrsFT>0?_adjHrsFT:(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
             var nc=0,ot=0,le=0,pn=0,vr=0,kp=0,late2=0;
             var ovr=attConvertOverrides[dk]||{};
             var attV=attendanceData[dk]||'';var vu=attV.toUpperCase();
             var _dateStr=mi+'-'+String(day).padStart(2,'0');
             var _holMul=getHolidayMultiplier(_dateStr);
-            if(ovr.nc!==undefined){nc=ovr.nc;if(ovr.ot===undefined&&hrs>ws.standardHours){ot=hrs-ws.standardHours;}}
-            else if(vu==='L'||(_holMul>0&&hrs>0)){if(emp.wageType==='monthly_fixed'){le=ws.effectiveHours||effH;}else if(emp.type==='Fulltime'){var _leEff2=hrs>=ws.standardHours?(ws.effectiveHours||effH):Math.max(0,hrs-(ws.breakHours||0));le=_leEff2;if(hrs>ws.standardHours){ot=hrs-ws.standardHours;}}else{le=hrs>0?hrs:0;}}
+            if(ovr.nc!==undefined){nc=ovr.nc;if(ovr.ot===undefined&&sh&&sh.start&&hrs>ws.standardHours){ot=hrs-ws.standardHours;}}
+            else if(vu==='L'||(_holMul>0&&hrs>0)){if(emp.wageType==='monthly_fixed'){le=ws.effectiveHours||effH;}else if(emp.type==='Fulltime'){var _leEff2=hrs>=ws.standardHours?(ws.effectiveHours||effH):Math.max(0,hrs-(ws.breakHours||0));le=_leEff2;if(sh&&sh.start&&hrs>ws.standardHours){ot=hrs-ws.standardHours;}}else{le=hrs>0?hrs:0;}}
             else if(vu==='X'||vu==='P'){pn=1;}
             else if(vu==='KP'){kp=1;}
-            else if(hrs>0){nc=hrs;if(hrs>=ws.standardHours){ot=hrs-ws.standardHours;nc=ws.effectiveHours||effH;}else{nc=Math.max(0,hrs-(ws.breakHours||0));}}
+            else if(hrs>0){nc=hrs;if(sh&&sh.start&&hrs>=ws.standardHours){ot=hrs-ws.standardHours;nc=ws.effectiveHours||effH;}else if(sh&&sh.start){nc=Math.max(0,hrs-(ws.breakHours||0));}else{nc=hrs;ot=0;}}
             /* removed ovr.ot stuck */
             if(ovr.le!==undefined)le=ovr.le;
             if(ovr.pn!==undefined)pn=ovr.pn;
@@ -5179,8 +5180,9 @@ function buildAttConvertPT(title,cls,emps,dateList,mi){
             var day=d.getDate();
             var dk=schedKey(mi+'-'+String(day).padStart(2,'0'),emp.id,_attDept,emp._originalDept||emp.dept);
             var dateStr=mi+'-'+String(day).padStart(2,'0');
-            var sh=schedules[dk];var raw=attTimesheetData[dk];
-            var hrs=raw&&raw.hours?raw.hours:(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
+            var sh=schedules[dk];var raw=_payrollRaw(dk);
+            var _adjHrsPT=raw?_payrollHours(raw,sh):0;
+            var hrs=_adjHrsPT>0?_adjHrsPT:(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
             var attV=attendanceData[dk]||'';var vu=attV.toUpperCase();
             var gc=0,le=0;
             var ovr=attConvertOverrides[dk]||{};
@@ -5449,7 +5451,7 @@ function showShiftDropdown(td){
     // === GIỜ THỰC TẾ ===
     var rawAtt=attTimesheetData[dk];
     h+='<div style="margin-top:8px;padding-top:6px;border-top:2px solid #e0e0e0">';
-    h+='<div style="font-size:10px;font-weight:700;color:#1565c0;margin-bottom:4px"><i class="fas fa-user-clock"></i> Giờ thực tế</div>';
+    h+='<div style="font-size:10px;font-weight:700;color:#1565c0;margin-bottom:4px"><i class="fas fa-user-clock"></i> Giờ chấm công tế</div>';
     if(rawAtt&&rawAtt.checkin){
         h+='<div style="font-size:9px;color:#666;margin-bottom:3px">Hiện tại: <b style="color:#1565c0">'+rawAtt.checkin+'</b> → <b style="color:#c62828">'+(rawAtt.checkout||'?')+'</b> = <b style="color:#2e7d32">'+(rawAtt.hours||0)+'h</b></div>';
     }
@@ -5519,7 +5521,7 @@ function showShiftDropdown(td){
             }
             attTimesheetData[dk]={checkin:firstIn,checkout:lastOut,hours:totalHrs,segments:segments};
             saveData();loadAttendance();closeShiftDropdown();
-            showSuccess('Giờ thực 實際: '+firstIn+'→'+lastOut+' ('+totalHrs.toFixed(1)+'h)');
+            showSuccess('Giờ chấm công 打卡: '+firstIn+'→'+lastOut+' ('+totalHrs.toFixed(1)+'h)');
         });
     }
     var actualClearBtn=dd.querySelector('#sdActualClearBtn');
@@ -5932,18 +5934,19 @@ function exportAttendance(){
         dateList.forEach(function(dd){
             var day=dd.getDate();
             var dk=schedKey(mi+'-'+String(day).padStart(2,'0'),emp.id,_attDept,emp._originalDept||emp.dept);
-            var sh=schedules[dk];var raw=attTimesheetData[dk];
-            var hrs=raw&&raw.hours?raw.hours:(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
+            var sh=schedules[dk];var raw=_payrollRaw(dk);
+            var _adjHrsFT=raw?_payrollHours(raw,sh):0;
+            var hrs=_adjHrsFT>0?_adjHrsFT:(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
             var nc=0,ot=0,le=0,pn=0,vr=0,kp=0,late2=0;
             var ovr=attConvertOverrides[dk]||{};
             var attV=attendanceData[dk]||'';var vu=attV.toUpperCase();
             var _dateStr=mi+'-'+String(day).padStart(2,'0');
             var _holMul=getHolidayMultiplier(_dateStr);
-            if(ovr.nc!==undefined){nc=ovr.nc;if(ovr.ot===undefined&&hrs>ws.standardHours){ot=hrs-ws.standardHours;}}
-            else if(vu==='L'||(_holMul>0&&hrs>0)){if(emp.wageType==='monthly_fixed'){le=ws.effectiveHours||effH;}else if(emp.type==='Fulltime'){var _leEff2=hrs>=ws.standardHours?(ws.effectiveHours||effH):Math.max(0,hrs-(ws.breakHours||0));le=_leEff2;if(hrs>ws.standardHours){ot=hrs-ws.standardHours;}}else{le=hrs>0?hrs:0;}}
+            if(ovr.nc!==undefined){nc=ovr.nc;if(ovr.ot===undefined&&sh&&sh.start&&hrs>ws.standardHours){ot=hrs-ws.standardHours;}}
+            else if(vu==='L'||(_holMul>0&&hrs>0)){if(emp.wageType==='monthly_fixed'){le=ws.effectiveHours||effH;}else if(emp.type==='Fulltime'){var _leEff2=hrs>=ws.standardHours?(ws.effectiveHours||effH):Math.max(0,hrs-(ws.breakHours||0));le=_leEff2;if(sh&&sh.start&&hrs>ws.standardHours){ot=hrs-ws.standardHours;}}else{le=hrs>0?hrs:0;}}
             else if(vu==='X'||vu==='P'){pn=1;}
             else if(vu==='KP'){kp=1;}
-            else if(hrs>0){nc=hrs;if(hrs>=ws.standardHours){ot=hrs-ws.standardHours;nc=ws.effectiveHours||effH;}else{nc=Math.max(0,hrs-(ws.breakHours||0));}}
+            else if(hrs>0){nc=hrs;if(sh&&sh.start&&hrs>=ws.standardHours){ot=hrs-ws.standardHours;nc=ws.effectiveHours||effH;}else if(sh&&sh.start){nc=Math.max(0,hrs-(ws.breakHours||0));}else{nc=hrs;ot=0;}}
             /* removed ovr.ot stuck */
             if(ovr.le!==undefined)le=ovr.le;
             if(ovr.pn!==undefined)pn=ovr.pn;
@@ -7109,7 +7112,7 @@ function getPayrollData(emp,mi){
         var covr=attConvertOverrides[dk]||{};
         var sh=schedules[dk];var raw=_payrollRaw(dk);
         var schedHrs=sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0;
-        var actualHrs=raw&&raw.hours?raw.hours:0;
+        var actualHrs=_payrollHours(raw,sh);
         var hrs=actualHrs||schedHrs;
         var attV=attendanceData[dk]||'';var vu=attV.toUpperCase();
         var holMul=getHolidayMultiplier(dateStr);
@@ -7165,7 +7168,7 @@ function getPayrollDataForDept(emp,mi,targetDept){
         var covr=attConvertOverrides[dk]||{};
         var raw=_payrollRaw(dk);
         var schedHrs=getScheduleHours(emp.id,dk);
-        var actualHrs=raw&&raw.hours?raw.hours:0;
+        var actualHrs=_payrollHours(raw,sh);
         var hrs=actualHrs||schedHrs;
         var attV=attendanceData[dk]||'';var vu=attV.toUpperCase();
         var holMul=getHolidayMultiplier(dateStr);
@@ -9630,7 +9633,7 @@ function exportAttendanceExcel(){_ensureXLSX(function(){
     ws1['!cols']=c1;
     XLSX.utils.book_append_sheet(wb,ws1,'Lịch làm');
 
-    // Sheet 2: Giờ thực tế
+    // Sheet 2: Giờ chấm công tế
     var h2=[['Mã NV','Họ tên','BP','Chức vụ']];
     dateList.forEach(function(dd){h2[0].push(dayNames[dd.getDay()]+' '+dd.getDate()+'/'+m);});
     h2[0].push('Tổng giờ');
@@ -9654,7 +9657,7 @@ function exportAttendanceExcel(){_ensureXLSX(function(){
     var ws2=XLSX.utils.aoa_to_sheet(h2);
     var c2=[{wch:10},{wch:16},{wch:10},{wch:14}];for(var i=0;i<days;i++)c2.push({wch:16});c2.push({wch:8});
     ws2['!cols']=c2;
-    XLSX.utils.book_append_sheet(wb,ws2,'Giờ thực tế');
+    XLSX.utils.book_append_sheet(wb,ws2,'Giờ chấm công tế');
 
     // Sheet 3: Quy đổi
     var h3=[['Mã NV','Họ tên','BP','Chức vụ','Loại','Dòng']];
@@ -9669,18 +9672,19 @@ function exportAttendanceExcel(){_ensureXLSX(function(){
         dateList.forEach(function(dd){
             var day=dd.getDate();
             var dk=schedKey(mi+'-'+String(day).padStart(2,'0'),emp.id,_attDept,emp._originalDept||emp.dept);
-            var sh=schedules[dk];var raw=attTimesheetData[dk];
-            var hrs=raw&&raw.hours?raw.hours:(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
+            var sh=schedules[dk];var raw=_payrollRaw(dk);
+            var _adjHrsFT=raw?_payrollHours(raw,sh):0;
+            var hrs=_adjHrsFT>0?_adjHrsFT:(sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0);
             var nc=0,ot=0,le=0,pn=0,vr=0,kp=0,late2=0;
             var ovr=attConvertOverrides[dk]||{};
             var attV=attendanceData[dk]||'';var vu=attV.toUpperCase();
             var _dateStr=mi+'-'+String(day).padStart(2,'0');
             var _holMul=getHolidayMultiplier(_dateStr);
-            if(ovr.nc!==undefined){nc=ovr.nc;if(ovr.ot===undefined&&hrs>ws3.standardHours){ot=hrs-ws3.standardHours;}}
-            else if(vu==='L'||(_holMul>0&&hrs>0)){if(emp.wageType==='monthly_fixed'){le=ws3.effectiveHours||effH;}else if(emp.type==='Fulltime'){var _leEff2=hrs>=ws3.standardHours?(ws3.effectiveHours||effH):Math.max(0,hrs-(ws3.breakHours||0));le=_leEff2;if(hrs>ws3.standardHours){ot=hrs-ws3.standardHours;}}else{le=hrs>0?hrs:0;}}
+            if(ovr.nc!==undefined){nc=ovr.nc;if(ovr.ot===undefined&&sh&&sh.start&&hrs>ws3.standardHours){ot=hrs-ws3.standardHours;}}
+            else if(vu==='L'||(_holMul>0&&hrs>0)){if(emp.wageType==='monthly_fixed'){le=ws3.effectiveHours||effH;}else if(emp.type==='Fulltime'){var _leEff2=hrs>=ws3.standardHours?(ws3.effectiveHours||effH):Math.max(0,hrs-(ws3.breakHours||0));le=_leEff2;if(sh&&sh.start&&hrs>ws3.standardHours){ot=hrs-ws3.standardHours;}}else{le=hrs>0?hrs:0;}}
             else if(vu==='X'||vu==='P'){pn=1;}
             else if(vu==='KP'){kp=1;}
-            else if(hrs>0){nc=hrs;if(hrs>=ws3.standardHours){ot=hrs-ws3.standardHours;nc=ws3.effectiveHours||effH;}else{nc=Math.max(0,hrs-(ws3.breakHours||0));}}
+            else if(hrs>0){nc=hrs;if(sh&&sh.start&&hrs>=ws3.standardHours){ot=hrs-ws3.standardHours;nc=ws3.effectiveHours||effH;}else if(sh&&sh.start){nc=Math.max(0,hrs-(ws3.breakHours||0));}else{nc=hrs;ot=0;}}
             /* removed ovr.ot stuck */if(ovr.le!==undefined)le=ovr.le;if(ovr.pn!==undefined)pn=ovr.pn;if(ovr.vr!==undefined)vr=ovr.vr;if(ovr.kp!==undefined)kp=ovr.kp;
             if(ovr.late!==undefined){late2=ovr.late;}
             else{var rawT2=attTimesheetData[dk];if(rawT2&&rawT2.checkin&&sh&&sh.start){var schedStart2=sh.start.indexOf(',')>=0?sh.start.split(',')[0]:sh.start;var lm2=timeDiffMinutes(schedStart2,rawT2.checkin);if(lm2>0){late2=lm2;}}}
@@ -9846,15 +9850,4 @@ function exportPayrollExcel(){_ensureXLSX(function(){
         var bonus=ovr.bonus||0;var otherTotal=0;(ovr.otherItems||[]).forEach(function(o){otherTotal+=o.amount||0;});
         var totalPay=sb+otPay+lePay+bonus+otherTotal;var deduct=ovr.deduct||0;var netPay=totalPay-deduct;
         var payMethod=(ovr.payMethod==='tm')?'TM':'CK';
-        sumRows.push([sNo,emp.id,emp.name+(emp.nameCN?' '+emp.nameCN:''),emp.type+' / '+emp.dept,'',Math.round(netPay),payMethod]);
-    });
-    var ws_sum=XLSX.utils.aoa_to_sheet(sumRows);
-    ws_sum['!cols']=[{wch:5},{wch:12},{wch:22},{wch:16},{wch:10},{wch:14},{wch:10}];
-    XLSX.utils.book_append_sheet(wb,ws_sum,'Tổng hợp');
-
-    _downloadXLSX(wb,'BangLuong_'+mi+'.xlsx');
-    showSuccess('Đã tải Excel 已下載薪資表');
-});}
-</script>
-</body>
-</html>
+        sumRows.push([sNo,emp.id,emp.name+(emp.nameCN?' '+em
