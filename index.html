@@ -4731,7 +4731,7 @@ function buildAttSchedule(title,cls,emps,dateList,mi){
     var dayNames=['CN','T2','T3','T4','T5','T6','T7'];
     var isFTSection=cls.indexOf('-pt')<0;
     var bgColor=cls.indexOf('kitchen')>=0?'var(--kitchen)':cls.indexOf('support')>=0?'#6a1b9a':'var(--service)';
-    var h='<div class="att-dept-header" style="background:'+bgColor+';color:white;padding:6px 12px;margin-top:12px;border-radius:6px 6px 0 0;font-size:13px;font-weight:700"><i class="fas fa-'+(cls.indexOf('kitchen')>=0?'fire':cls.indexOf('support')>=0?'hands-helping':'concierge-bell')+'"></i> '+title+' ('+emps.length+')</div>';
+    var h='<div class="att-dept-header" style="background:'+bgColor+';color:white;padding:6px 12px;margin-top:12px;border-radius:6px 6px 0 0;font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:center"><span><i class="fas fa-'+(cls.indexOf('kitchen')>=0?'fire':cls.indexOf('support')>=0?'hands-helping':'concierge-bell')+'"></i> '+title+' ('+emps.length+')</span><button onclick="event.stopPropagation();openAddNVToBlock(\''+cls+'\')" style="background:rgba(255,255,255,0.25);color:white;border:1px solid rgba(255,255,255,0.5);padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-weight:600"><i class="fas fa-plus"></i> Thêm NV 加員工</button></div>';
     h+='<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:16px"><thead><tr>';
     h+='<th style="position:sticky;left:0;background:#333;color:white;padding:4px;min-width:90px;z-index:5;font-size:11px">NV</th>';
     dateList.forEach(function(d){
@@ -4818,6 +4818,19 @@ function openDayDetail(dateStr){
             }
         });
     });
+    // 2nd pass: include NV with chấm công or Boss XN but no schedule (so Boss can confirm them)
+    active.forEach(function(emp){
+        var deptIdx=emp.dept==='Bếp'?0:emp.dept==='Phục vụ'?1:2;
+        if(_added[emp.id+'_'+deptIdx])return;
+        var dk=schedKey(dateStr,emp.id,emp.dept,emp.dept);
+        var raw=attTimesheetData[dk]||attTimesheetData[dateStr+'-'+emp.id];
+        var bc=attBossConfirmations[dk]||attBossConfirmations[dateStr+'-'+emp.id];
+        if(raw||bc){
+            var hrs=raw&&raw.hours?raw.hours:(bc&&bc.hours?bc.hours:0);
+            depts[deptIdx].emps.push({emp:emp,sh:{start:'',end:''},dk:dk,hrs:hrs,raw:raw,confirmed:attConfirmations[dk],crossDept:false,noSched:true});
+            _added[emp.id+'_'+deptIdx]=1;
+        }
+    });
     var h='<div style="max-height:80vh;overflow-y:auto;padding:0 4px">';
     var totalAll=0,countAll=0;
     depts.forEach(function(dept){
@@ -4828,7 +4841,7 @@ function openDayDetail(dateStr){
         dept.emps.forEach(function(item,idx){
             var emp=item.emp,sh=item.sh,dk=item.dk;
             var sParts=sh.start.split(','),eParts=sh.end.split(',');
-            var shiftLabel=sParts.map(function(sp,si){return fmt(sp)+'-'+fmt(eParts[si]||'');}).join(', ');
+            var shiftLabel=item.noSched?'-':sParts.map(function(sp,si){return fmt(sp)+'-'+fmt(eParts[si]||'');}).join(', ');
             var typeLabel=emp.type==='Fulltime'?'<span style="background:#e8f5e9;color:#2e7d32;padding:1px 6px;border-radius:4px;font-size:10px">FT</span>':'<span style="background:#fff3e0;color:#e65100;padding:1px 6px;border-radius:4px;font-size:10px">PT</span>';
             var crossBadge=item.crossDept?'<span style="font-size:8px;background:#e65100;color:white;padding:1px 4px;border-radius:3px;margin-left:4px">⇄'+emp.dept+'</span>':'';
             var actualInfo='-';
@@ -7023,6 +7036,71 @@ function _payrollRaw(dk){
         if(bc.hours>0||bc.checkin)return {checkin:bc.checkin,checkout:bc.checkout,hours:bc.hours,segments:bc.segments,fromBoss:true};
     }
     return attTimesheetData[dk];
+}
+
+// ====== Add NV to block (Lich lam) ======
+function openAddNVToBlock(cls){
+    var deptTarget=cls.indexOf('kitchen')>=0?'Bếp':cls.indexOf('support')>=0?'Hỗ trợ khác':'Phục vụ';
+    var typeTarget=cls.indexOf('-pt')>=0?'Partime':'Fulltime';
+    var mi=document.getElementById('attendanceMonth').value;
+    var parts=mi.split('-'),y=parseInt(parts[0]),m=parseInt(parts[1]);
+    // List ALL NV not in this block yet
+    var inBlockIds={};
+    var active=employees.filter(function(e){return isEmpActiveInMonth(e,y,m);});
+    active.forEach(function(e){
+        if(e.dept===deptTarget && e.type===typeTarget && !hiddenFromSchedule.has(e.id))inBlockIds[e.id]=1;
+    });
+    // Add cross-dept NV
+    var crossSet=cls.indexOf('kitchen')>=0?crossDeptSchedule.kitchen:cls.indexOf('service')>=0?crossDeptSchedule.service:crossDeptSchedule.support;
+    if(crossSet){crossSet.forEach(function(id){var emp=employees.find(function(e){return e.id===id;});if(emp&&emp.type===typeTarget)inBlockIds[id]=1;});}
+    // Candidates: all employees not in this block
+    var candidates=employees.filter(function(e){return !inBlockIds[e.id];});
+    var modalId='addNVBlockModal';
+    var modal=document.getElementById(modalId);
+    if(!modal){modal=document.createElement('div');modal.id=modalId;modal.className='modal';modal.innerHTML='<div class="modal-content" style="max-width:700px"><div class="modal-header" id="anbHeader"></div><div class="modal-body" id="anbBody"></div></div>';document.body.appendChild(modal);modal.addEventListener('click',function(e){if(e.target===modal)modal.classList.remove('active');});}
+    var html2='<div style="padding:10px"><input id="anbSearch" type="text" placeholder="Tìm tên/mã NV..." style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;margin-bottom:10px" oninput="_anbFilter()"><div id="anbList" style="max-height:50vh;overflow-y:auto">';
+    if(!candidates.length){html2+='<div style="padding:20px;text-align:center;color:#999">Tất cả NV đã có trong khu vực này 已全部在此區</div>';}
+    candidates.forEach(function(emp){
+        var deptBadge='<span style="font-size:9px;background:#eee;color:#333;padding:2px 6px;border-radius:3px;margin-left:6px">'+emp.dept+'</span>';
+        var typeBadge='<span style="font-size:9px;background:'+(emp.type==='Fulltime'?'#c8e6c9':'#fff3e0')+';color:'+(emp.type==='Fulltime'?'#2e7d32':'#e65100')+';padding:2px 6px;border-radius:3px;margin-left:4px">'+(emp.type==='Fulltime'?'FT':'PT')+'</span>';
+        var sameType=(emp.type===typeTarget);
+        var sameDept=(emp.dept===deptTarget);
+        var hint='';
+        if(!sameType){hint='<span style="color:#c62828;font-size:9px;margin-left:6px">⚠ Khác loại (sẽ đổi sang '+typeTarget+')</span>';}
+        else if(!sameDept){hint='<span style="color:#1976d2;font-size:9px;margin-left:6px">⇄ Cross-dept</span>';}
+        html2+='<div class="anb-item" data-search="'+(emp.name+' '+emp.nameCN+' '+emp.id).toLowerCase()+'" style="padding:10px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center"><div><b>'+emp.id+'</b> — '+emp.name+' <span style="color:#888;font-size:11px">'+(emp.nameCN||'')+'</span>'+deptBadge+typeBadge+hint+'</div><button onclick="_anbAdd(\''+emp.id+'\',\''+cls+'\')" style="background:#4caf50;color:white;border:none;padding:5px 14px;border-radius:4px;cursor:pointer;font-size:11px"><i class="fas fa-plus"></i> Thêm</button></div>';
+    });
+    html2+='</div></div>';
+    document.getElementById('anbHeader').innerHTML='<span style="font-size:15px;font-weight:700">+ Thêm NV vào khu vực: '+deptTarget+' '+(typeTarget==='Fulltime'?'Chính thức':'Part-time')+'</span><span class="close-btn" onclick="document.getElementById(\''+modalId+'\').classList.remove(\'active\')" style="cursor:pointer;float:right;font-size:20px">&times;</span>';
+    document.getElementById('anbBody').innerHTML=html2;
+    modal.classList.add('active');
+}
+function _anbFilter(){
+    var q=document.getElementById('anbSearch').value.toLowerCase().trim();
+    var items=document.querySelectorAll('.anb-item');
+    items.forEach(function(it){it.style.display=(!q||it.getAttribute('data-search').indexOf(q)>=0)?'flex':'none';});
+}
+function _anbAdd(empId, cls){
+    var emp=employees.find(function(e){return e.id===empId;});if(!emp)return;
+    var deptTarget=cls.indexOf('kitchen')>=0?'Bếp':cls.indexOf('support')>=0?'Hỗ trợ khác':'Phục vụ';
+    var typeTarget=cls.indexOf('-pt')>=0?'Partime':'Fulltime';
+    var changed=false;
+    // Case 1: hidden -> unhide
+    if(hiddenFromSchedule.has(empId)){hiddenFromSchedule.delete(empId);changed=true;}
+    // Case 2: different type -> change type (with confirm)
+    if(emp.type!==typeTarget){
+        if(!confirm('NV '+emp.name+' đang là '+(emp.type==='Fulltime'?'FT':'PT')+'. Đổi sang '+(typeTarget==='Fulltime'?'FT':'PT')+'? \n是否更改類型？'))return;
+        emp.type=typeTarget;changed=true;
+    }
+    // Case 3: different dept -> add to crossDept
+    if(emp.dept!==deptTarget){
+        var crossSet=cls.indexOf('kitchen')>=0?crossDeptSchedule.kitchen:cls.indexOf('service')>=0?crossDeptSchedule.service:crossDeptSchedule.support;
+        if(crossSet){crossSet.add(empId);changed=true;}
+    }
+    if(changed){saveData();}
+    document.getElementById('addNVBlockModal').classList.remove('active');
+    loadAttendance();
+    showSuccess('Đã thêm '+emp.name+' vào '+deptTarget+' '+(typeTarget==='Fulltime'?'Chính thức':'Part-time'));
 }
 // Lam tron theo lich Boss (threshold 5 phut)
 function _roundPunchForBoss(punchTime, schedTime, isStart){
