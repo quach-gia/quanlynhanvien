@@ -1141,12 +1141,30 @@ function _doCloudSave(jsonStr){
         var checkData=JSON.parse(jsonStr);
         var empCount=(checkData.employees||[]).length;
         var schedCount=Object.keys(checkData.schedules||{}).length;
-        // STRICT GUARD: block neu empty 1 trong 2 (NV hoac schedules) - tranh ghi de mat data
+        // STRICT GUARD: block neu empty 1 trong 2 (NV hoac schedules)
         if(empCount<3 || schedCount<10){
-            console.warn('Cloud save BLOCKED: data too small ('+empCount+' NV, '+schedCount+' schedules). Avoid overwriting cloud.');
-            _updateSyncStatus('error','BLOCKED: data ('+empCount+'NV, '+schedCount+' lich) qua nho - KHONG luu de bao ve cloud');
+            console.warn('Cloud save BLOCKED: data too small ('+empCount+'NV, '+schedCount+' schedules)');
+            _updateSyncStatus('error','BLOCKED: data ('+empCount+'NV, '+schedCount+' lich) qua nho');
             return;
         }
+        // ANTI-DROP GUARD: chan neu data save dot ngot giam manh so voi lan save truoc
+        var prevEmp=parseInt(localStorage.getItem('_qlnv_lastSavedEmp')||'0');
+        var prevSched=parseInt(localStorage.getItem('_qlnv_lastSavedSched')||'0');
+        if(prevEmp>=20 && empCount < prevEmp*0.7){
+            console.error('CLOUD SAVE BLOCKED: NV giam manh ('+prevEmp+' -> '+empCount+'). Co the data bi loi - KHONG SAVE de bao ve.');
+            _updateSyncStatus('error','BLOCKED: NV giam tu '+prevEmp+' xuong '+empCount+' - bao ve data');
+            return;
+        }
+        if(prevSched>=100 && schedCount < prevSched*0.5){
+            console.error('CLOUD SAVE BLOCKED: Schedules giam manh ('+prevSched+' -> '+schedCount+').');
+            _updateSyncStatus('error','BLOCKED: Lich giam tu '+prevSched+' xuong '+schedCount+' - bao ve data');
+            return;
+        }
+        // Track for next check
+        try{
+            localStorage.setItem('_qlnv_lastSavedEmp', String(empCount));
+            localStorage.setItem('_qlnv_lastSavedSched', String(schedCount));
+        }catch(_){}
     } catch(ge){ console.warn('Guard check failed:',ge); }
 
     if(!CLOUD_SYNC_URL)return;
