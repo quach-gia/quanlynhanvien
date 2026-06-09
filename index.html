@@ -1150,9 +1150,9 @@ function _doCloudSave(jsonStr){
         // ANTI-DROP GUARD: chan neu data save dot ngot giam manh so voi lan save truoc
         var prevEmp=parseInt(localStorage.getItem('_qlnv_lastSavedEmp')||'0');
         var prevSched=parseInt(localStorage.getItem('_qlnv_lastSavedSched')||'0');
-        if(prevEmp>=20 && empCount < prevEmp*0.7){
-            console.error('CLOUD SAVE BLOCKED: NV giam manh ('+prevEmp+' -> '+empCount+'). Co the data bi loi - KHONG SAVE de bao ve.');
-            _updateSyncStatus('error','BLOCKED: NV giam tu '+prevEmp+' xuong '+empCount+' - bao ve data');
+        if(prevEmp>=10 && empCount < prevEmp - 3){
+            console.error('CLOUD SAVE BLOCKED: NV giam ('+prevEmp+' -> '+empCount+'). Bao ve data.');
+            _updateSyncStatus('error','BLOCKED: NV giam tu '+prevEmp+' xuong '+empCount);
             return;
         }
         if(prevSched>=100 && schedCount < prevSched*0.5){
@@ -1165,6 +1165,31 @@ function _doCloudSave(jsonStr){
             localStorage.setItem('_qlnv_lastSavedEmp', String(empCount));
             localStorage.setItem('_qlnv_lastSavedSched', String(schedCount));
         }catch(_){}
+    } catch(ge){ console.warn('Guard check failed:',ge); }
+
+    // CONFLICT CHECK: fetch cloud savedAt, if newer than our last pull, refuse to save
+    if(!CLOUD_SYNC_URL){return;}
+    var lastKnownCloud = localStorage.getItem('_qlnv_cloudSavedAt') || '';
+    var lastKnownTime = lastKnownCloud ? new Date(lastKnownCloud).getTime() : 0;
+    fetch(CLOUD_SYNC_URL+'?action=loadData',{cache:'no-store'}).then(function(r){return r.json();}).then(function(checkRes){
+        if(checkRes && checkRes.savedAt){
+            var cloudTime = new Date(checkRes.savedAt).getTime();
+            if(lastKnownTime>0 && cloudTime > lastKnownTime + 10000){
+                console.error('CONFLICT: Cloud savedAt='+checkRes.savedAt+' newer than our last sync='+lastKnownCloud);
+                _updateSyncStatus('error','CONFLICT: Cloud co thay doi moi! Vui long Tai Cloud truoc khi luu');
+                _cloudSaving=false;
+                return;
+            }
+        }
+        _proceedCloudSave(jsonStr);
+    }).catch(function(e){
+        console.warn('Cloud check failed, proceeding with save:',e);
+        _proceedCloudSave(jsonStr);
+    });
+    return;
+}
+function _proceedCloudSave(jsonStr){
+    try { // dummy to keep structure
     } catch(ge){ console.warn('Guard check failed:',ge); }
 
     if(!CLOUD_SYNC_URL)return;
@@ -1180,7 +1205,7 @@ function _doCloudSave(jsonStr){
         fetch(CLOUD_SYNC_URL,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'action=saveData&password='+CLOUD_SYNC_PWD+'&data='+encodeURIComponent(jsonStr),redirect:'follow'})
         .then(function(r){return r.json();}).then(function(res){
             _cloudSaving=false;
-            if(res.success){_lastCloudSave=res.savedAt||'';_cloudDirty=false;_updateSyncStatus('saved');_deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');console.log('Cloud saved');}
+            if(res.success){_lastCloudSave=res.savedAt||'';localStorage.setItem('_qlnv_cloudSavedAt',res.savedAt||'');_cloudDirty=false;_updateSyncStatus('saved');_deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');console.log('Cloud saved');}
             else{_updateSyncStatus('error',res.error);}
             if(_cloudRetryData){var rd=_cloudRetryData;_cloudRetryData=null;_doCloudSave(rd);}
         }).catch(function(err){_cloudSaving=false;_updateSyncStatus('error',err.toString());});
@@ -1281,6 +1306,8 @@ function _loadFromCloud(){
             if(res.success&&res.data){
                 try{
                     localStorage.setItem(LS_KEY,res.data);
+                    localStorage.setItem('_qlnv_cloudSavedAt', res.savedAt||'');
+                    localStorage.setItem('_qlnv_lastSave',String(Date.now()));
                     var ok=loadData();
                     _lastCloudSave=res.savedAt||'';
                     _updateSyncStatus('saved');
@@ -1405,6 +1432,7 @@ function _autoSyncFromCloud(){
                         localStorage.setItem(LS_KEY,mergedJson);
                         localStorage.setItem('_qlnv_lastSave',String(Date.now()));
                         _lastCloudSave=res.savedAt;
+                        localStorage.setItem('_qlnv_cloudSavedAt', res.savedAt||'');
                         _updateSyncStatus('saved');
                         _postInit();
                         showSuccess('\u0110\u00e3 t\u1ef1 \u0111\u1ed9ng \u0111\u1ed3ng b\u1ed9 t\u1eeb Cloud! \u5df2\u81ea\u52d5\u540c\u6b65');
@@ -7274,7 +7302,7 @@ function getPayrollData(emp,mi){
             continue;
         }
         else if(hrs>0){
-            if(emp.type==='Fulltime'){nc=hrs;if(hrs>=ws.standardHours){ot=hrs-ws.standardHours;nc=ws.effectiveHours||effH;}else{nc=Math.max(0,hrs-(ws.breakHours||0));}}
+            if(emp.type==='Fulltime'){nc=hrs;if(sh&&sh.start&&hrs>=ws.standardHours){ot=hrs-ws.standardHours;nc=ws.effectiveHours||effH;}else if(sh&&sh.start){nc=Math.max(0,hrs-(ws.breakHours||0));}else{nc=hrs;ot=0;}}
             else{nc=Math.round(hrs*10)/10;}
         }
         /* removed covr.ot stuck */
@@ -7323,7 +7351,7 @@ function getPayrollDataForDept(emp,mi,targetDept){
             if(emp.type==='Fulltime'){if(hrs>ws.standardHours){otTotal+=hrs-ws.standardHours;}}
             holDetails.push({day:i,hrs:_holHrs2,mul:holMul});continue;}
         else if(hrs>0){
-            if(emp.type==='Fulltime'){nc=hrs;if(hrs>=ws.standardHours){ot=hrs-ws.standardHours;nc=ws.effectiveHours||effH;}else{nc=Math.max(0,hrs-(ws.breakHours||0));}}
+            if(emp.type==='Fulltime'){nc=hrs;if(sh&&sh.start&&hrs>=ws.standardHours){ot=hrs-ws.standardHours;nc=ws.effectiveHours||effH;}else if(sh&&sh.start){nc=Math.max(0,hrs-(ws.breakHours||0));}else{nc=hrs;ot=0;}}
             else{nc=Math.round(hrs*10)/10;}
         }
         /* removed covr.ot stuck */
