@@ -1401,17 +1401,22 @@ function _autoSyncFromCloud(){
     }).catch(function(e){console.warn('Auto-sync failed:',e);});
 }
 document.addEventListener('DOMContentLoaded',function(){try{
+    // LUON pull cloud truoc khi hien data -> dam bao dong bo giua cac may
     var hasData=loadData();
-    if(!hasData&&CLOUD_SYNC_URL){
-        // Try loading from cloud
+    if(CLOUD_SYNC_URL){
         _loadFromCloud().then(function(cloudOk){
-            if(!cloudOk)_initDefaultData();
+            if(!cloudOk && !hasData){
+                _initDefaultData();
+            }
             _postInit();
-            _autoSyncFromCloud();
-            if(CLOUD_SYNC_URL)setInterval(_autoSyncFromCloud,60000);
-            // Periodic forced cloud save every 30s if dirty
-            if(CLOUD_SYNC_URL)setInterval(function(){if(_cloudDirty&&!_cloudSaving){var j=JSON.stringify(_buildDataObj());_doCloudSave(j);}},30000);
-            document.addEventListener('visibilitychange',function(){if(!document.hidden&&CLOUD_SYNC_URL)_autoSyncFromCloud();});
+            // Setup periodic auto-sync
+            setInterval(_autoSyncFromCloud,60000);
+            setInterval(function(){if(_cloudDirty&&!_cloudSaving){var j=JSON.stringify(_buildDataObj());_doCloudSave(j);}},30000);
+            document.addEventListener('visibilitychange',function(){if(!document.hidden)_autoSyncFromCloud();});
+        }).catch(function(e){
+            console.warn('Cloud load failed, using local:',e);
+            if(!hasData)_initDefaultData();
+            _postInit();
         });
         return; // async path
     }
