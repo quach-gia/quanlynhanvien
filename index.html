@@ -1401,15 +1401,16 @@ function _autoSyncFromCloud(){
     }).catch(function(e){console.warn('Auto-sync failed:',e);});
 }
 document.addEventListener('DOMContentLoaded',function(){try{
-    // LUON pull cloud truoc khi hien data -> dam bao dong bo giua cac may
     var hasData=loadData();
-    if(CLOUD_SYNC_URL){
+    var localTime=parseInt(localStorage.getItem('_qlnv_lastSave')||'0');
+    var localAgeMin=(Date.now()-localTime)/60000;
+    // Chi force-pull cloud neu: local TRONG, hoac local cu (> 30 phut), hoac cloud savedAt moi hon local 30s+
+    if(CLOUD_SYNC_URL && (!hasData || localAgeMin > 30)){
         _loadFromCloud().then(function(cloudOk){
             if(!cloudOk && !hasData){
                 _initDefaultData();
             }
             _postInit();
-            // Setup periodic auto-sync
             setInterval(_autoSyncFromCloud,60000);
             setInterval(function(){if(_cloudDirty&&!_cloudSaving){var j=JSON.stringify(_buildDataObj());_doCloudSave(j);}},30000);
             document.addEventListener('visibilitychange',function(){if(!document.hidden)_autoSyncFromCloud();});
@@ -1418,7 +1419,16 @@ document.addEventListener('DOMContentLoaded',function(){try{
             if(!hasData)_initDefaultData();
             _postInit();
         });
-        return; // async path
+        return;
+    }
+    if(hasData && CLOUD_SYNC_URL){
+        // Local fresh -> just check cloud in background (no force pull)
+        _postInit();
+        setTimeout(_autoSyncFromCloud, 2000);
+        setInterval(_autoSyncFromCloud,60000);
+        setInterval(function(){if(_cloudDirty&&!_cloudSaving){var j=JSON.stringify(_buildDataObj());_doCloudSave(j);}},30000);
+        document.addEventListener('visibilitychange',function(){if(!document.hidden)_autoSyncFromCloud();});
+        return;
     }
     if(!hasData){
     employees=JSON.parse(JSON.stringify(INITIAL_EMPLOYEES));
