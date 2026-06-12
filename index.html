@@ -361,6 +361,9 @@ td.cell-selected{outline:3px solid #ff6f00 !important;outline-offset:-2px;box-sh
                 <button class="btn btn-sm" onclick="cloudSaveNow()" style="background:#1565c0;color:white" title="Lưu toàn bộ dữ liệu lên Google Sheets"><i class="fas fa-cloud-upload-alt"></i> Lưu Cloud 雲端儲存</button>
                 <button class="btn btn-sm" onclick="cloudLoadNow()" style="background:#00838f;color:white" title="Tải dữ liệu từ Google Sheets"><i class="fas fa-cloud-download-alt"></i> Tải Cloud 雲端載入</button>
                 <span id="cloudSyncStatus" style="margin-left:4px;cursor:help" title="Cloud sync status"></span>
+                <button class="btn btn-sm" onclick="exportFullBackup()" style="background:#2e7d32;color:white" title="Tải toàn bộ dữ liệu ra file JSON (sao lưu / chuyển máy)"><i class="fas fa-download"></i> Tải backup 備份</button>
+                <button class="btn btn-sm" onclick="document.getElementById('_importBackupFile').click()" style="background:#ef6c00;color:white" title="Nhập dữ liệu từ file JSON (chuyển máy, không qua Cloud)"><i class="fas fa-upload"></i> Nhập backup 匯入</button>
+                <input type="file" id="_importBackupFile" accept=".json,application/json" style="display:none" onchange="importFullBackup(this)">
                 <button class="btn btn-sm" onclick="downloadScheduleImage()" style="background:#607d8b;color:white" title="Tải ảnh lịch làm"><i class="fas fa-camera"></i> Tải ảnh</button>
                 <button class="btn btn-sm" onclick="exportScheduleExcel()" style="background:#1b5e20;color:white" title="Tải Excel lịch làm"><i class="fas fa-file-excel"></i> Excel</button>
             </div>
@@ -1140,52 +1143,27 @@ function _doCloudSave(jsonStr){
     if(_cloudSaving){_cloudRetryData=jsonStr;return;}
     _cloudSaving=true;_cloudRetryData=null;
     _updateSyncStatus('saving');
-    // Split into chunks (Google Apps Script GET URL limit ~5500 chars for data)
-    var CHUNK=4000;
-    var chunks=[];
-    for(var i=0;i<jsonStr.length;i+=CHUNK)chunks.push(jsonStr.substring(i,i+CHUNK));
-    var total=chunks.length;
-    if(total<=1){
-        // Small data: single GET
-        fetch(CLOUD_SYNC_URL+'?action=saveData&password='+CLOUD_SYNC_PWD+'&data='+encodeURIComponent(jsonStr),{redirect:'follow'})
-        .then(function(r){return r.json();}).then(function(res){
-            _cloudSaving=false;
-            if(res.success){_lastCloudSave=res.savedAt||'';_cloudDirty=false;_updateSyncStatus('saved');_deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');console.log('Cloud saved');}
-            else{_updateSyncStatus('error',res.error);}
-            if(_cloudRetryData){var rd=_cloudRetryData;_cloudRetryData=null;_doCloudSave(rd);}
-        }).catch(function(err){_cloudSaving=false;_updateSyncStatus('error',err.toString());});
-        return;
-    }
-    // Large data: parallel chunks then assemble
-    var done=0,failed=false;
-    var PARALLEL=5;
-    var queue=chunks.map(function(c,idx){return idx;});
-    function onChunkDone(){
-        done++;
-        _updateSyncStatus('saving','Lưu '+done+'/'+total);
-        if(done===total&&!failed){
-            fetch(CLOUD_SYNC_URL+'?action=assembleChunks&password='+CLOUD_SYNC_PWD+'&totalChunks='+total,{redirect:'follow'})
-            .then(function(r){return r.json();}).then(function(ar){
-                _cloudSaving=false;
-                if(ar.success){_lastCloudSave=ar.savedAt||'';_cloudDirty=false;_updateSyncStatus('saved');_deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');console.log('Cloud saved ('+total+' chunks)');}
-                else{_updateSyncStatus('error',ar.error);}
-                if(_cloudRetryData){var rd=_cloudRetryData;_cloudRetryData=null;_doCloudSave(rd);}
-            }).catch(function(err){_cloudSaving=false;_updateSyncStatus('error',err.toString());});
-        }
-    }
-    function sendNext(){
-        if(queue.length===0||failed)return;
-        var idx=queue.shift();
-        var url=CLOUD_SYNC_URL+'?action=saveDataChunk&password='+CLOUD_SYNC_PWD+'&chunkIndex='+idx+'&totalChunks='+total+'&data='+encodeURIComponent(chunks[idx]);
-        fetch(url,{redirect:'follow'}).then(function(r){return r.json();}).then(function(res){
-            if(!res.success&&!failed){failed=true;_cloudSaving=false;_updateSyncStatus('error','Chunk '+idx+': '+res.error);return;}
-            onChunkDone();sendNext();
-        }).catch(function(err){
-            if(!failed){failed=true;_cloudSaving=false;_updateSyncStatus('error','Chunk '+idx+': '+err);}
-        });
-    }
-    for(var p=0;p<Math.min(PARALLEL,total);p++)sendNext();
+    // single POST: gui tron goi 1 lan, backend tu cat theo o tuan tu (an toan, khong dua nhau)
+    fetch(CLOUD_SYNC_URL,{
+        method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify({action:'saveData',password:CLOUD_SYNC_PWD,data:jsonStr}),
+        redirect:'follow'
+    }).then(function(r){return r.json();}).then(function(res){
+        _cloudSaving=false;
+        if(res.success){
+            _lastCloudSave=res.savedAt||'';
+            if(res.savedAt)localStorage.setItem('_qlnv_cloudSavedAt',res.savedAt);
+            _cloudDirty=false;_updateSyncStatus('saved');
+            _deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');
+            console.log('Cloud saved (single POST), savedAt='+res.savedAt);
+        }else{_updateSyncStatus('error',res.error);}
+        if(_cloudRetryData){var rd=_cloudRetryData;_cloudRetryData=null;_doCloudSave(rd);}
+    }).catch(function(err){
+        _cloudSaving=false;_cloudDirty=true;_updateSyncStatus('error',err.toString());
+    });
 }
+
 // Show browser warning if there are unsaved cloud changes
 // NOTE: sync XHR doesn't follow GAS 302 redirects, sendBeacon has 64KB limit (data ~180KB)
 // So we can't reliably save on unload — instead warn the user to wait for cloud sync
@@ -1229,6 +1207,8 @@ function cloudLoadNow(){
     fetch(CLOUD_SYNC_URL+'?action=loadData').then(function(r){return r.json();}).then(function(res){
         if(res.success&&res.data){
             localStorage.setItem(LS_KEY,res.data);
+            if(res.savedAt)localStorage.setItem('_qlnv_cloudSavedAt',res.savedAt);
+            localStorage.setItem('_qlnv_lastSave',String(Date.now()));
             _cloudDirty=false;
             _updateSyncStatus('saved');
             alert('Đã tải dữ liệu từ Cloud ('+res.chunks+' chunks).\nTrang sẽ reload.');
@@ -1250,6 +1230,8 @@ function _loadFromCloud(){
             if(res.success&&res.data){
                 try{
                     localStorage.setItem(LS_KEY,res.data);
+                    if(res.savedAt)localStorage.setItem('_qlnv_cloudSavedAt',res.savedAt);
+                    localStorage.setItem('_qlnv_lastSave',String(Date.now()));
                     var ok=loadData();
                     _lastCloudSave=res.savedAt||'';
                     _updateSyncStatus('saved');
@@ -1328,6 +1310,44 @@ function clearAllData(){
     location.reload();
 }
 
+// === FULL BACKUP EXPORT / IMPORT (chuyển máy, không qua Cloud) ===
+function exportFullBackup(){
+    try{
+        var d=localStorage.getItem(LS_KEY);
+        if(!d||d.length<10){alert('Trang này chưa có dữ liệu để sao lưu!');return;}
+        try{JSON.parse(d);}catch(e){alert('Dữ liệu local đang hỏng, không xuất được: '+e.message);return;}
+        var t=new Date();var pad=function(n){return String(n).padStart(2,'0');};
+        var name='qlnv_backup_'+t.getFullYear()+pad(t.getMonth()+1)+pad(t.getDate())+'_'+pad(t.getHours())+pad(t.getMinutes())+'.json';
+        var b=new Blob([d],{type:'application/json'});
+        var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();
+        setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(a.href);},1000);
+        alert('✅ Đã tải '+name+' ('+d.length+' ký tự). Kiểm tra thư mục Downloads.');
+    }catch(e){alert('Lỗi tải backup: '+e.message);}
+}
+function importFullBackup(input){
+    var f=input&&input.files&&input.files[0];
+    if(!f){return;}
+    var reader=new FileReader();
+    reader.onload=function(ev){
+        var txt=ev.target.result;var obj;
+        try{obj=JSON.parse(txt);}catch(e){alert('File không phải JSON hợp lệ: '+e.message);input.value='';return;}
+        var nNV=(obj.employees&&obj.employees.length)||0;
+        var nSched=obj.schedules?Object.keys(obj.schedules).length:0;
+        var nAtt=obj.attendanceRaw?Object.keys(obj.attendanceRaw).length:(obj.attendanceData?Object.keys(obj.attendanceData).length:0);
+        if(!confirm('NHẬP dữ liệu từ file này?\n\n• Nhân viên: '+nNV+'\n• Lịch làm: '+nSched+'\n• Chấm công: '+nAtt+'\n\n⚠️ Dữ liệu hiện tại trên MÁY NÀY sẽ bị THAY bằng dữ liệu trong file.\nNên bấm "Tải backup" trước nếu chưa chắc.')){input.value='';return;}
+        try{
+            localStorage.setItem(LS_KEY,txt);
+            localStorage.setItem('_qlnv_lastSave',String(Date.now()));
+            try{localStorage.removeItem('_qlnv_deletedKeys');}catch(e){}
+            alert('✅ Đã nhập dữ liệu. Trang sẽ tải lại.');
+            location.reload();
+        }catch(e){alert('Lỗi ghi dữ liệu (file quá lớn so với giới hạn trình duyệt?): '+e.message);input.value='';}
+    };
+    reader.onerror=function(){alert('Không đọc được file.');input.value='';};
+    reader.readAsText(f);
+}
+
+
 function _postInit(){
     // Common init (runs for both fresh and loaded data)
     document.getElementById('taskDate').valueAsDate=new Date();
@@ -1347,36 +1367,63 @@ function _initDefaultData(){
 }
 
 // INIT
+function _rerenderAfterSync(){
+    try{
+        renderEmployees();updateStats();
+        var activeTab=document.querySelector('.tab-content.active');
+        if(activeTab){var tid=activeTab.id;
+            if(tid==='schedule'){reloadSchedule();updateSchedDeptCounts();}
+            if(tid==='registration')loadRegistrationView();
+            if(tid==='attendance')loadAttendance();
+            if(tid==='payroll')loadPayroll();
+            if(tid==='tasks')loadTaskView();
+        }
+    }catch(e){console.warn('rerender error',e);}
+}
+// Nhan ban Cloud ve local (co kiem tra hop le truoc khi ghi de)
+function _adoptCloud(res){
+    var cloudData;
+    try{cloudData=JSON.parse(res.data);}catch(ex){console.warn('Cloud JSON hong, bo qua:',ex);_updateSyncStatus('error','Cloud JSON hong');return false;}
+    if(!cloudData||!cloudData.employees||!cloudData.employees.length){console.warn('Cloud thieu employees, bo qua');return false;}
+    localStorage.setItem(LS_KEY,res.data);
+    localStorage.setItem('_qlnv_cloudSavedAt',res.savedAt);
+    localStorage.setItem('_qlnv_lastSave',String(Date.now()));
+    _lastCloudSave=res.savedAt;
+    loadData();_rerenderAfterSync();_updateSyncStatus('saved');
+    showSuccess('Đã cập nhật dữ liệu mới nhất từ Cloud 已更新');
+    return true;
+}
+// Dong bo kieu "ban moi nhat thang" (newest-wins). savedAt dang 'yyyy-MM-dd HH:mm:ss' -> so chuoi = so thoi gian.
 function _autoSyncFromCloud(){
     if(!CLOUD_SYNC_URL)return;
+    var hasLocal=!!(typeof employees!=='undefined'&&employees&&employees.length);
+    var known=localStorage.getItem('_qlnv_cloudSavedAt')||'';
     fetch(CLOUD_SYNC_URL+'?action=loadData').then(function(r){return r.json();}).then(function(res){
-        if(res.success&&res.data&&res.savedAt){
-            var cloudTime=new Date(res.savedAt).getTime();
-            var localTime=parseInt(localStorage.getItem('_qlnv_lastSave')||'0');
-            if(cloudTime>localTime+5000){
-                console.log('Cloud newer, merging...');
-                try{
-                    var cloudData=JSON.parse(res.data);
-                    var merged=_mergeCloudData(cloudData);
-                    if(merged){
-                        // Safety: re-strip deleted schedule keys after merge (防止殘留)
-                        if(_deletedKeys.schedules){var dk=Object.keys(_deletedKeys.schedules);for(var di=0;di<dk.length;di++){delete schedules[dk[di]];delete kitchenLabels[dk[di]];delete scheduleDepts[dk[di]];}}
-                        var mergedJson=JSON.stringify(_buildDataObj());
-                        localStorage.setItem(LS_KEY,mergedJson);
-                        localStorage.setItem('_qlnv_lastSave',String(Date.now()));
-                        _lastCloudSave=res.savedAt;
-                        _updateSyncStatus('saved');
-                        _postInit();
-                        showSuccess('\u0110\u00e3 t\u1ef1 \u0111\u1ed9ng \u0111\u1ed3ng b\u1ed9 t\u1eeb Cloud! \u5df2\u81ea\u52d5\u540c\u6b65');
-                        // Push merged data back to cloud
-                        _scheduleCloudSave(mergedJson);
-                        _deletedKeys={};localStorage.removeItem('_qlnv_deletedKeys');
-                    }
-                }catch(ex){console.warn('Merge failed:',ex);}
+        var cloudHas=!!(res&&res.success&&res.data&&res.savedAt);
+        if(!known){
+            // BOOTSTRAP: may chua co moc Cloud (lan dau chay ban moi). Bao ve data tot tren may.
+            if(!cloudHas){
+                if(hasLocal&&!_cloudSaving)_doCloudSave(JSON.stringify(_buildDataObj()));
+                return;
             }
+            if(!hasLocal){_adoptCloud(res);return;}
+            var localMs=parseInt(localStorage.getItem('_qlnv_lastSave')||'0');
+            if(hasLocal&&!localMs)localMs=Date.now();
+            var cloudMs=new Date(res.savedAt).getTime();
+            if(cloudMs>localMs+5000){_adoptCloud(res);return;}     // Cloud moi hon ro ret -> lay Cloud
+            if(!_cloudSaving)_doCloudSave(JSON.stringify(_buildDataObj())); // local moi hon/ngang -> day local len
+            return;
         }
+        // BINH THUONG: so chuoi savedAt
+        if(!cloudHas)return;
+        if(res.savedAt<=known)return;                               // Cloud khong moi hon -> bo qua
+        if(_cloudDirty||_cloudSaving){                              // local co thay doi chua luu -> day len truoc (local thang)
+            _doCloudSave(JSON.stringify(_buildDataObj()));return;
+        }
+        _adoptCloud(res);                                          // Cloud moi hon -> lay ve
     }).catch(function(e){console.warn('Auto-sync failed:',e);});
 }
+
 document.addEventListener('DOMContentLoaded',function(){try{
     var hasData=loadData();
     if(!hasData&&CLOUD_SYNC_URL){
@@ -4857,10 +4904,10 @@ function openDayDetail(dateStr){
             }
             var _aci='_ac_'+dk.replace(/[^a-zA-Z0-9]/g,'_');
             var actualCell='<span id="'+_aci+'" style="cursor:pointer" onclick="event.stopPropagation();_dayInlineEdit(this,\''+dk+'\',\''+emp.id+'\',\''+dateStr+'\')" title="B\u1ea5m \u0111\u1ec3 ch\u1ec9nh">'+actualInfo+'</span>';
-var confirmBtn=item.confirmed?'<span style="color:#4caf50;font-size:16px;cursor:pointer" onclick="delete attConfirmations[\''+dk+'\'];if(!_deletedKeys.attConfirmations)_deletedKeys.attConfirmations={};_deletedKeys.attConfirmations[\''+dk+'\']=1;saveData();loadAttendance();openDayDetail(\''+dateStr+'\');" title="Bấm để hủy xác nhận 點擊取消確認">✓</span>':'<span style="color:#ccc;font-size:12px;cursor:pointer" onclick="attConfirmations[\''+dk+'\']=true;saveData();loadAttendance();openDayDetail(\''+dateStr+'\');" title="Xác nhận 確認">○</span>';
+var confirmBtn=_confirmCellHtml(dk,dateStr,!!item.confirmed);
             var editBtn='<span style="cursor:pointer;color:#c62828;font-size:14px" onclick="event.stopPropagation();if(confirm(\'Xóa ca của '+emp.name.replace(/'/g,'')+ ' ngày này? 確定刪除此班次？\')){_dayDetailDel2(\''+dk+'\',\''+dateStr+'\');}" title="Xóa ca 刪除班次"><i class="fas fa-trash-alt"></i></span>';
             totalAll+=item.hrs;countAll++;
-            h+='<tr style="border-bottom:1px solid #eee;'+(item.crossDept?'background:#fff8e1':'')+'"><td style="padding:5px;text-align:center;border:1px solid #eee;color:#999;font-size:10px">'+(idx+1)+'</td><td style="padding:5px;border:1px solid #eee;font-weight:600">'+emp.name+' <span style="font-size:9px;color:var(--primary)">'+emp.nameCN+'</span>'+crossBadge+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+typeLabel+'</td><td style="padding:5px;border:1px solid #eee;text-align:center;font-weight:600;font-size:11px">'+shiftLabel+'</td><td style="padding:5px;border:1px solid #eee;text-align:center;font-weight:700;color:#2e7d32">'+item.hrs.toFixed(1)+'h</td><td style="padding:5px;border:1px solid #eee;text-align:center;font-size:10px">'+actualCell+'</td>'+_renderPayrollTimeCells(item,dk,emp.id,dateStr)+'<td style="padding:5px;border:1px solid #eee;text-align:center">'+confirmBtn+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+editBtn+'</td></tr>';
+            h+='<tr style="border-bottom:1px solid #eee;'+(item.crossDept?'background:#fff8e1':'')+'"><td style="padding:5px;text-align:center;border:1px solid #eee;color:#999;font-size:10px">'+(idx+1)+'</td><td style="padding:5px;border:1px solid #eee;font-weight:600">'+emp.name+' <span style="font-size:9px;color:var(--primary)">'+emp.nameCN+'</span>'+crossBadge+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+typeLabel+'</td><td style="padding:5px;border:1px solid #eee;text-align:center;font-weight:600;font-size:11px;cursor:pointer" onclick="event.stopPropagation();_dayDetailEdit(\''+dk+'\',\''+emp.id+'\',\''+dateStr+'\')" title="Bấm để sửa ca">'+shiftLabel+'</td><td style="padding:5px;border:1px solid #eee;text-align:center;font-weight:700;color:#2e7d32">'+item.hrs.toFixed(1)+'h</td><td style="padding:5px;border:1px solid #eee;text-align:center;font-size:10px">'+actualCell+'</td>'+_renderPayrollTimeCells(item,dk,emp.id,dateStr)+'<td style="padding:5px;border:1px solid #eee;text-align:center">'+confirmBtn+'</td><td style="padding:5px;border:1px solid #eee;text-align:center">'+editBtn+'</td></tr>';
         });
         h+='</table></div>';
     });
@@ -4947,12 +4994,12 @@ function _dayDetailEdit(dk,empId,dateStr){
 function _dayDetailSave(dk,empId,dateStr){
     var s=document.getElementById('_ddeStart').value.trim();
     var e=document.getElementById('_ddeEnd').value.trim();
-    if(s&&e){schedules[dk]={start:s,end:e};}
+    if(s&&e){schedules[dk]={start:_normSchedStr(s),end:_normSchedStr(e)};}
     var ci=document.getElementById('_ddeCheckin').value.trim();
     var co=document.getElementById('_ddeCheckout').value.trim();
     if(ci||co){
         if(!attTimesheetData[dk])attTimesheetData[dk]={};
-        attTimesheetData[dk].checkin=ci;attTimesheetData[dk].checkout=co;
+        attTimesheetData[dk].checkin=_normSchedStr(ci);attTimesheetData[dk].checkout=_normSchedStr(co);
         if(ci&&co){var h1=parseFloat(ci.split(':')[0])+parseFloat(ci.split(':')[1]||0)/60;var h2=parseFloat(co.split(':')[0])+parseFloat(co.split(':')[1]||0)/60;if(h2<h1)h2+=24;attTimesheetData[dk].hours=h2-h1;}
     }
     saveData();
@@ -5617,7 +5664,7 @@ function saveAttCellEdit(empId,day,mi){
     var s=document.getElementById('attEditStart').value;
     var e=document.getElementById('attEditEnd').value;
     var dk=currentAttEditDk||(mi+'-'+String(day).padStart(2,'0')+'-'+empId);if(!schedules[dk]){var _f=findScheduleForEmp(mi+'-'+String(day).padStart(2,'0'),empId);dk=_f.dk;}
-    if(s&&e){schedules[dk]={start:s,end:e};}
+    if(s&&e){schedules[dk]={start:_normSchedStr(s),end:_normSchedStr(e)};}
     else{delete schedules[dk];if(!_deletedKeys.schedules)_deletedKeys.schedules={};_deletedKeys.schedules[dk]=1;}
     saveData();closeModal('attDetailModal');loadAttendance();showSuccess('Đã lưu! 已儲存');
 }
@@ -6201,7 +6248,7 @@ function buildPaysheetTab(mi,y,m,active){
         var lePay=0;
         pd.holDetails.forEach(function(hd){
             if(isFT){if(wt==='monthly_fixed'){var _dIm4=new Date(y,m,0).getDate();lePay+=_es.baseSalary/30*2;}else{var _df4=Math.min(hd.hrs/effH,1);lePay+=_es.baseSalary/stdDays*2;}}
-            else{var _ptLR=(typeof crossRate!=='undefined'&&crossRate)||(emp.hourlyRate||25000);lePay+=_ptLR*2*hd.hrs;}
+            else{var _ptLR=(typeof crossRate!=='undefined'&&crossRate)||(emp.hourlyRate||25000);lePay+=_ptLR*(hd.mul||2)*hd.hrs;}
         });
         var attendBonus=0;
         var bonus=ovr.bonus||0;
@@ -6281,7 +6328,7 @@ function openPaysheetEmp(empId,mi){
             var ts2=_es.baseSalary+_es.responsibility+_es.attendance+(ovr.otherAllowance||0);
             if(wt2==='monthly_fixed'){var dIm2=new Date(parseInt(mi.split('-')[0]),parseInt(mi.split('-')[1]),0).getDate();leDaysDetail+=1;lePay+=_es.baseSalary/30*2;}
             else{var dayFrac2=hd.hrs/effH;if(dayFrac2>1)dayFrac2=1;leDaysDetail+=dayFrac2;lePay+=_es.baseSalary/stdDays*2;}
-        }else{var _ptLR=(typeof crossRate!=='undefined'&&crossRate)||(emp.hourlyRate||25000);lePay+=_ptLR*2*hd.hrs;}
+        }else{var _ptLR=(typeof crossRate!=='undefined'&&crossRate)||(emp.hourlyRate||25000);lePay+=_ptLR*(hd.mul||2)*hd.hrs;}
     });
     var attendBonus=0;
     var bonusItems=ovr.bonusItems||[];
@@ -6485,7 +6532,7 @@ function openPaysheetEmp(empId,mi){
         var _cLePay=0;
         _crossPd.holDetails.forEach(function(hd){
             if(isFT){var _cTs2=(_cRate||_es.baseSalary)+(_cRate?0:_es.responsibility)+(_cRate?0:_es.attendance)+(_crossOvr.otherAllowance||0);var _cDf=hd.hrs/effH;if(_cDf>1)_cDf=1;_cLePay+=(_cRate||_es.baseSalary)/stdDays*2;}
-            else{_cLePay+=_cPtRate*2*hd.hrs;}
+            else{_cLePay+=_cPtRate*(hd.mul||2)*hd.hrs;}
         });
         var _cBonusItems=_crossOvr.bonusItems||[];var _cDeductItems=_crossOvr.deductItems||[];var _cOtherItems=_crossOvr.otherItems||[];
         var _cTotalBonus=0;_cBonusItems.forEach(function(b){_cTotalBonus+=b.amount||0;});
@@ -6939,7 +6986,7 @@ function downloadPaysheetFile(){
         var lePay=0;
         pd.holDetails.forEach(function(hd){
             if(isFT){if(wt==='monthly_fixed'){var _dIm4=new Date(y,m,0).getDate();lePay+=_es.baseSalary/30*2;}else{var _df4=Math.min(hd.hrs/effH,1);lePay+=_es.baseSalary/stdDays*2;}}
-            else{var _ptLR=(typeof crossRate!=='undefined'&&crossRate)||(emp.hourlyRate||25000);lePay+=_ptLR*2*hd.hrs;}
+            else{var _ptLR=(typeof crossRate!=='undefined'&&crossRate)||(emp.hourlyRate||25000);lePay+=_ptLR*(hd.mul||2)*hd.hrs;}
         });
         var attendBonus=0;
         var bonus=ovr.bonus||0;
@@ -7143,7 +7190,9 @@ function _adjustHoursForSplitShift(hrs, sh, raw){
 }
 // Tinh gio luong sau khi lam tron + tru gap
 function _payrollHours(raw, sh){
-    if(!raw||!raw.checkin)return raw&&raw.hours?raw.hours:0;
+    if(!raw)return 0;
+    if(raw.segments&&raw.segments.length){var _t=0;for(var _i=0;_i<raw.segments.length;_i++)_t+=(raw.segments[_i].hours||0);return Math.round(_t*100)/100;}
+    if(!raw.checkin)return raw.hours?raw.hours:0;
     var rawIn=raw.checkin, rawOut=raw.checkout||'';
     if(sh&&sh.start&&sh.end){
         var ssA=String(sh.start).split(','), seA=String(sh.end).split(',');
@@ -7162,12 +7211,14 @@ function _payrollHours(raw, sh){
     }
     return raw.hours||0;
 }
-// Render 2 td cells: Thoi gian tinh luong + So gio
 function _renderPayrollTimeCells(item, dk, empId, dateStr){
     var raw=_payrollRaw(dk);
     var sh=(item&&item.sh)||schedules[dk];
-    var rIn='', rOut='', hrs=0;
-    if(raw && raw.checkin && sh && sh.start && sh.end){
+    var rIn='', rOut='', hrs=0, segStr='';
+    if(raw && raw.segments && raw.segments.length){
+        segStr=raw.segments.map(function(s){return s.cin+'-'+s.cout;}).join(', ');
+        hrs=_payrollHours(raw, sh);
+    } else if(raw && raw.checkin && sh && sh.start && sh.end){
         var ssA=String(sh.start).split(','), seA=String(sh.end).split(',');
         var ss=ssA[0].trim(), se=seA[seA.length-1].trim();
         rIn=_roundPunchForBoss(raw.checkin, ss, true);
@@ -7177,33 +7228,49 @@ function _renderPayrollTimeCells(item, dk, empId, dateStr){
         rIn=raw.checkin; rOut=raw.checkout||''; hrs=raw.hours||0;
     }
     var _id='_pt_'+dk.replace(/[^a-zA-Z0-9]/g,'_');
-    var timeStr=(rIn||rOut)?(rIn+' → '+rOut):'-';
+    var timeStr=segStr?segStr:((rIn||rOut)?(rIn+' → '+rOut):'-');
     var hrsStr=hrs>0?hrs.toFixed(1)+'h':'-';
     var bossBadge=(raw&&raw.fromBoss)?' <span style="font-size:8px;background:#1976d2;color:white;padding:0 3px;border-radius:3px">B</span>':'';
-    var timeCell='<td style="padding:5px;border:1px solid #eee;text-align:center;background:#fff3e0;font-size:10px;color:#e65100;cursor:pointer" onclick="event.stopPropagation();_payrollTimeInlineEdit(this,\''+dk+'\',\''+empId+'\',\''+dateStr+'\')" title="Bấm để chỉnh"><span id="'+_id+'">'+timeStr+bossBadge+'</span></td>';
+    var timeCell='<td style="padding:5px;border:1px solid #eee;text-align:center;background:#fff3e0;font-size:10px;color:#e65100;cursor:pointer" onclick="event.stopPropagation();_payrollTimeInlineEdit(this,\''+dk+'\',\''+empId+'\',\''+dateStr+'\')" title="Bấm để chỉnh (VD: 16-23 hoặc 10-13, 16-22)"><span id="'+_id+'">'+timeStr+bossBadge+'</span></td>';
     var hrsCell='<td style="padding:5px;border:1px solid #eee;text-align:center;background:#fff8e1;font-weight:700;color:#e65100;font-size:11px">'+hrsStr+'</td>';
     return timeCell + hrsCell;
 }
 function _payrollTimeInlineEdit(el, dk, empId, dateStr){
     var raw=_payrollRaw(dk)||{};
-    var curIn=raw.checkin||'', curOut=raw.checkout||'';
-    var curVal=curIn+'-'+curOut;
+    var curVal='';
+    if(raw.segments&&raw.segments.length){curVal=raw.segments.map(function(s){return s.cin+'-'+s.cout;}).join(', ');}
+    else if(raw.checkin){curVal=raw.checkin+'-'+(raw.checkout||'');}
     el.onclick=null;
-    el.innerHTML='<div style="display:flex;flex-direction:column;gap:3px;align-items:center"><input id="_ptVal" type="text" value="'+curVal+'" placeholder="HH:MM-HH:MM" style="width:100px;padding:3px;border:1px solid #e65100;border-radius:3px;font-size:10px;text-align:center"><div style="display:flex;gap:3px"><button onclick="event.stopPropagation();_payrollTimeSave(\''+dk+'\',\''+empId+'\',\''+dateStr+'\');" style="padding:2px 8px;background:#4caf50;color:white;border:none;border-radius:3px;font-size:9px;cursor:pointer">✓</button><button onclick="event.stopPropagation();openDayDetail(\''+dateStr+'\');" style="padding:2px 8px;background:#999;color:white;border:none;border-radius:3px;font-size:9px;cursor:pointer">✗</button></div></div>';
-    var inp=document.getElementById('_ptVal');if(inp)inp.focus();
+    el.innerHTML='<div style="display:flex;flex-direction:column;gap:3px;align-items:center"><input id="_ptVal" type="text" value="'+curVal+'" placeholder="VD: 16-23 hoặc 10-13, 16-22" style="width:130px;padding:3px;border:1px solid #e65100;border-radius:3px;font-size:10px;text-align:center"><div style="display:flex;gap:3px"><button onclick="event.stopPropagation();_payrollTimeSave(\''+dk+'\',\''+empId+'\',\''+dateStr+'\');" style="padding:2px 8px;background:#4caf50;color:white;border:none;border-radius:3px;font-size:9px;cursor:pointer">✓</button><button onclick="event.stopPropagation();openDayDetail(\''+dateStr+'\');" style="padding:2px 8px;background:#999;color:white;border:none;border-radius:3px;font-size:9px;cursor:pointer">✗</button></div></div>';
+    var inp=document.getElementById('_ptVal');if(inp){inp.focus();inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();_payrollTimeSave(dk,empId,dateStr);}if(e.key==='Escape'){e.preventDefault();openDayDetail(dateStr);}});}
 }
 function _payrollTimeSave(dk, empId, dateStr){
     var v=document.getElementById('_ptVal').value.trim();
-    if(!v){openDayDetail(dateStr);return;}
-    var m=v.match(/(\d{1,2}:\d{1,2})\s*[-→]\s*(\d{1,2}:\d{1,2})/);
-    if(!m){alert('Sai định dạng. VD: 18:00-22:00');return;}
-    var ci=m[1], co=m[2];
-    var p1=ci.split(':').map(Number), p2=co.split(':').map(Number);
-    var hrs=((p2[0]*60+p2[1])-(p1[0]*60+p1[1]))/60;
-    if(hrs<0)hrs+=24;
     if(typeof attBossConfirmations==='undefined'||!attBossConfirmations)attBossConfirmations={};
-    attBossConfirmations[dk]={checkin:ci,checkout:co,hours:Math.round(hrs*100)/100,status:'confirmed',confirmedAt:new Date().toISOString(),fromBoss:true};
+    if(!v){
+        if(attBossConfirmations[dk]){delete attBossConfirmations[dk];if(!_deletedKeys.attBossConfirmations)_deletedKeys.attBossConfirmations={};_deletedKeys.attBossConfirmations[dk]=1;}
+        saveData();openDayDetail(dateStr);return;
+    }
+    var parsed=_parseTimeSegments(v);
+    if(!parsed){alert('Sai định dạng. VD: 16-23 hoặc 10-13, 16-22');return;}
+    attBossConfirmations[dk]={checkin:parsed.first,checkout:parsed.last,hours:Math.round(parsed.totalH*100)/100,segments:parsed.segments,status:'confirmed',confirmedAt:new Date().toISOString(),fromBoss:true};
+    if(_deletedKeys.attBossConfirmations)delete _deletedKeys.attBossConfirmations[dk];
     saveData();openDayDetail(dateStr);
+}
+function _normSchedStr(str){
+    return String(str||'').split(',').map(function(t){t=t.trim();if(!t)return '';if(t.indexOf(':')<0)t=t+':00';return t;}).filter(function(x){return x;}).join(',');
+}
+function _confirmCellHtml(dk,dateStr,on){
+    if(on)return '<span style="color:#4caf50;font-size:16px;cursor:pointer" onclick="event.stopPropagation();_toggleDayConfirm(\''+dk+'\',\''+dateStr+'\',this)" title="Bấm để hủy xác nhận">✓</span>';
+    return '<span style="color:#ccc;font-size:12px;cursor:pointer" onclick="event.stopPropagation();_toggleDayConfirm(\''+dk+'\',\''+dateStr+'\',this)" title="Xác nhận">○</span>';
+}
+function _toggleDayConfirm(dk,dateStr,el){
+    var on;
+    if(attConfirmations[dk]){delete attConfirmations[dk];if(!_deletedKeys.attConfirmations)_deletedKeys.attConfirmations={};_deletedKeys.attConfirmations[dk]=1;on=false;}
+    else{attConfirmations[dk]=true;if(_deletedKeys.attConfirmations)delete _deletedKeys.attConfirmations[dk];on=true;}
+    saveData();
+    if(el&&typeof el.outerHTML!=='undefined'){el.outerHTML=_confirmCellHtml(dk,dateStr,on);}
+    if(typeof loadAttendance==='function'){try{loadAttendance();}catch(e){}}
 }
 
 function getPayrollData(emp,mi){
@@ -7218,6 +7285,7 @@ function getPayrollData(emp,mi){
         var dateStr=mi+'-'+String(i).padStart(2,'0');
         var covr=attConvertOverrides[dk]||{};
         var sh=schedules[dk];var raw=_payrollRaw(dk);
+        var _sdHome=scheduleDepts[dk];if(_sdHome&&_sdHome!==emp.dept){continue;} // ngay nay thuoc vi tri khac -> khong tinh vao vi tri chinh
         var schedHrs=sh&&sh.start&&sh.end?getScheduleHours(emp.id,dk):0;
         var actualHrs=raw?_payrollHours(raw,sh):0;
         var hrs=actualHrs||schedHrs;
@@ -7267,8 +7335,8 @@ function getPayrollDataForDept(emp,mi,targetDept){
             sh=schedules[dkOld];
             if(sh&&sh.start){
                 var dayDept=scheduleDepts[dkOld];
-                if(dayDept&&dayDept!==targetDept){sh=null;}
-                else{dk=dkOld;}
+                if(dayDept===targetDept){dk=dkOld;}   // chi lay key thuong khi ngay do duoc danh dau dung vi tri kiem
+                else{sh=null;}
             }
         }
         if(!sh||!sh.start)continue;
@@ -7375,6 +7443,17 @@ function buildPayrollFT(title,emps,mi,y,m){
 }
 
 // Calculate weekend (T7/CN) attendance per week for PT
+function _weekendWorked(dateStrX, emp, crossDept){
+    var dkX=schedKey(dateStrX,emp.id,crossDept||emp.dept,emp.dept);
+    var shX=schedules[dkX];
+    if(!shX){dkX=dateStrX+'-'+emp.id;shX=schedules[dkX];}
+    if(shX&&shX.start&&shX.end)return true;            // co lich xep
+    var rawX=_payrollRaw(dkX);
+    if(rawX&&(rawX.checkin||rawX.hours>0))return true;  // co cham cong thuc te (key dept)
+    var rawP=_payrollRaw(dateStrX+'-'+emp.id);
+    if(rawP&&(rawP.checkin||rawP.hours>0))return true;  // co cham cong thuc te (key thuong)
+    return false;
+}
 function _calcWeekendAtt(emp,mi,crossDept){
     var parts=mi.split('-');var y=parseInt(parts[0]),m=parseInt(parts[1]);
     var days=new Date(y,m,0).getDate();
@@ -7400,16 +7479,9 @@ function _calcWeekendAtt(emp,mi,crossDept){
         if(w.sat>0&&w.sun>0){
             // Check if worked on Saturday
             var dateStrSat=mi+'-'+String(w.sat).padStart(2,'0');
-            var dk6=schedKey(dateStrSat,emp.id,crossDept||emp.dept,emp.dept);
-            var sh6=schedules[dk6];
-            if(!sh6){dk6=dateStrSat+'-'+emp.id;sh6=schedules[dk6];}
-            if(sh6&&sh6.start&&sh6.end)w.satWork=true;
-            // Check if worked on Sunday
             var dateStrSun=mi+'-'+String(w.sun).padStart(2,'0');
-            var dk0=schedKey(dateStrSun,emp.id,crossDept||emp.dept,emp.dept);
-            var sh0=schedules[dk0];
-            if(!sh0){dk0=dateStrSun+'-'+emp.id;sh0=schedules[dk0];}
-            if(sh0&&sh0.start&&sh0.end)w.sunWork=true;
+            w.satWork=_weekendWorked(dateStrSat,emp,crossDept);
+            w.sunWork=_weekendWorked(dateStrSun,emp,crossDept);
             validWeeks.push(w);
         }
     });
@@ -7438,7 +7510,7 @@ function buildPayrollPT(title,emps,mi,y,m){
         var rate=crossHrRate||emp.hourlyRate||25000;
         var leRate=(ovr.holidayRate||rate*2);
         var workPay=pd.nc*rate;
-        var lePay=0;pd.holDetails.forEach(function(hd){lePay+=hd.hrs*2*rate;});
+        var lePay=0;pd.holDetails.forEach(function(hd){lePay+=hd.hrs*(hd.mul||2)*rate;});
         
         var bonus=ovr.bonus||0;
         var otherTotal=0;(ovr.otherItems||[]).forEach(function(o){otherTotal+=o.amount||0;});
@@ -7714,7 +7786,7 @@ function openPayrollDetail(empId,mi,crossDeptTarget){
             var ts2=_es2.baseSalary+_es2.responsibility+_es2.attendance+(ovr.otherAllowance||0);
             if(wt2==='monthly_fixed'){var dIm2=new Date(parseInt(mi.split('-')[0]),parseInt(mi.split('-')[1]),0).getDate();leDaysDetail+=1;lePay+=_es2.baseSalary/30*2;}
             else{var dayFrac2=hd.hrs/effH;if(dayFrac2>1)dayFrac2=1;leDaysDetail+=dayFrac2;lePay+=_es2.baseSalary/stdDays*2;}
-        }else{var _ptLR=(typeof crossRate!=='undefined'&&crossRate)||(emp.hourlyRate||25000);lePay+=_ptLR*2*hd.hrs;}
+        }else{var _ptLR=(typeof crossRate!=='undefined'&&crossRate)||(emp.hourlyRate||25000);lePay+=_ptLR*(hd.mul||2)*hd.hrs;}
     });
     var attendBonus=0;
     var bonusItems=ovr.bonusItems||[];
@@ -9914,7 +9986,7 @@ function exportPayrollExcel(){_ensureXLSX(function(){
             var crossHrRate=isCross?(payrollOverrides[mi+'-'+emp.id+'-'+emp._crossDept]||{}).crossRate:null;
             var rate=crossHrRate||emp.hourlyRate||25000;
             var leRate=rate*2;var workPay=pd.nc*rate;
-            var lePay=0;pd.holDetails.forEach(function(hd){lePay+=hd.hrs*2*rate;});
+            var lePay=0;pd.holDetails.forEach(function(hd){lePay+=hd.hrs*(hd.mul||2)*rate;});
             var bonus=ovr.bonus||0;var otherTotal=0;(ovr.otherItems||[]).forEach(function(o){otherTotal+=o.amount||0;});
             var totalPay=workPay+lePay+bonus+otherTotal;var deduct=ovr.deduct||0;var netPay=totalPay-deduct;
             grandTotal+=netPay;
