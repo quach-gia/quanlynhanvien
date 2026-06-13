@@ -1397,21 +1397,14 @@ function _adoptCloud(res){
 // Dong bo kieu "ban moi nhat thang" (newest-wins). savedAt dang 'yyyy-MM-dd HH:mm:ss' -> so chuoi = so thoi gian.
 function _autoSyncFromCloud(){
     if(!CLOUD_SYNC_URL||_cloudSaving)return;
-    if(document.querySelector('.modal.active'))return; // dang mo popup -> khong dong bo de khoi gian doan thao tac
-    var hasLocal=!!(typeof employees!=='undefined'&&employees&&employees.length);
+    if(document.querySelector('.modal.active'))return; // dang mo popup -> khong dong bo de khoi gian doan
     fetch(CLOUD_SYNC_URL+'?action=loadData').then(function(r){return r.json();}).then(function(res){
         var cloudHas=!!(res&&res.success&&res.data&&res.savedAt);
-        if(!cloudHas)return;
-        if(!hasLocal){_adoptCloud(res);return;}                          // may trong -> lay Cloud ve
-        if(_cloudDirty){_doCloudSave(JSON.stringify(_buildDataObj()));return;} // co thay doi chua luu -> day len truoc (KHONG mat)
+        if(!cloudHas)return;                                       // khong tai duoc cloud -> giu local
+        if(_cloudDirty){_doCloudSave(JSON.stringify(_buildDataObj()));return;} // co sua chua luu -> day len (giu edit cua minh)
+        // Cloud la nguon chuan: may chi XEM thi LAY cloud ve, KHONG bao gio day data cu de len
         var known=localStorage.getItem('_qlnv_cloudSavedAt')||'';
-        if(!known){
-            var localMs=parseInt(localStorage.getItem('_qlnv_lastSave')||'0')||Date.now();
-            var cloudMs=new Date(res.savedAt).getTime();
-            if(cloudMs>localMs+5000){_adoptCloud(res);}else{localStorage.setItem('_qlnv_cloudSavedAt',res.savedAt);}
-            return;
-        }
-        if(res.savedAt>known){_adoptCloud(res);}                         // Cloud moi hon -> TU DONG cap nhat
+        if(res.savedAt!==known){_adoptCloud(res);}
     }).catch(function(e){console.warn('Auto-sync failed:',e);});
 }
 
@@ -7400,12 +7393,28 @@ function getPayrollDataForDept(emp,mi,targetDept){
     }
     return {nc:Math.round(ncTotal*10)/10,ot:otTotal,le:leTotal,leHrs:leHrsTotal,late:lateTotal,ovr:ovr,holDetails:holDetails};
 }
+function _countMissedPunch(emp,mi,crossDept){
+    var p=mi.split('-');var days=new Date(parseInt(p[0]),parseInt(p[1]),0).getDate();
+    var cnt=0,list=[];
+    for(var i=1;i<=days;i++){
+        var base=mi+'-'+String(i).padStart(2,'0');
+        var dk=crossDept?(base+'-'+emp.id+'@'+crossDept):(base+'-'+emp.id);
+        var raw=attTimesheetData[dk];
+        if(!raw&&crossDept)raw=attTimesheetData[base+'-'+emp.id];
+        if(!raw)continue;
+        var hi,ho;
+        if(raw.segments&&raw.segments.length){hi=!!_segIn(raw.segments[0]);ho=!!_segOut(raw.segments[raw.segments.length-1]);}
+        else{hi=!!raw.checkin;ho=!!raw.checkout;}
+        if(hi!==ho){cnt++;list.push(i);}
+    }
+    return {count:cnt,days:list};
+}
 function buildPayrollFT(title,emps,mi,y,m){
     var isBep=title.indexOf('Bếp')>=0;var isHT=title.indexOf('Hỗ trợ')>=0;
     var bg=isBep?'var(--kitchen)':isHT?'#6a1b9a':'var(--service)';
     var h='<div style="margin-top:16px"><div style="background:'+bg+';color:white;padding:8px 14px;border-radius:6px 6px 0 0;font-size:13px;font-weight:700"><i class="fas fa-'+(isBep?'fire':isHT?'hands-helping':'concierge-bell')+'"></i> '+title+' ('+emps.length+')</div>';
     h+='<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#333;color:white">';
-    var cols=['NO.','Mã NV','Họ tên','Chức vụ','Ngày vào','Lương CB<br>基本薪資','PC TN<br>責任','PC CC<br>全勤','PC Khác','Tổng TN<br>總收入','Ngày công thường<br>實工','Tiền công ngày thường<br>月工資','TC giờ<br>加班時','TC tiền<br>加班費','Đi làm lễ<br>節日實工','Lễ tiền<br>節日費','Thưởng<br>獎金','Tổng lương<br>實際工資','Phạt/Trừ<br>罰款','Thực lĩnh<br>實領','Ghi chú'];
+    var cols=['NO.','Mã NV','Họ tên','Chức vụ','Ngày vào','Lương CB<br>基本薪資','PC TN<br>責任','PC CC<br>全勤','PC Khác','Tổng TN<br>總收入','Ngày công thường<br>實工','Tiền công ngày thường<br>月工資','TC giờ<br>加班時','TC tiền<br>加班費','Đi làm lễ<br>節日實工','Lễ tiền<br>節日費','Quên CC<br>忘打卡','Thưởng<br>獎金','Tổng lương<br>實際工資','Phạt/Trừ<br>罰款','Thực lĩnh<br>實領','Ghi chú'];
     h+='<th style="padding:3px;font-size:9px;text-align:center;border:1px solid #555;width:24px"></th>';
     cols.forEach(function(c){h+='<th style="padding:5px 4px;font-size:10px;white-space:nowrap;text-align:center;border:1px solid #555">'+c+'</th>';});
     h+='</tr></thead><tbody>';
@@ -7465,6 +7474,7 @@ function buildPayrollFT(title,emps,mi,y,m){
         h+='<td style="padding:4px;border:1px solid #eee;text-align:right;font-size:10px;color:'+(otPay>0?'#e65100':'#ccc')+'">'+(otPay>0?formatCurrency(Math.round(otPay)):'-')+'</td>';
         h+='<td style="padding:4px;border:1px solid #eee;text-align:center;font-size:10px;color:'+(leDays>0?'#d4a017':'#ccc')+'">'+(leDays>0?leDays.toFixed(2):'-')+'</td>';
         h+='<td style="padding:4px;border:1px solid #eee;text-align:right;font-size:10px;color:'+(lePay>0?'#d4a017':'#ccc')+'">'+(lePay>0?formatCurrency(Math.round(lePay)):'-')+'</td>';
+        var _missFT=_countMissedPunch(emp,mi,isCrossDeptRow?emp._crossDept:null);h+='<td style="padding:4px;border:1px solid #eee;text-align:center;font-weight:700;font-size:11px;color:'+(_missFT.count>0?'#c62828':'#2e7d32')+'" title="'+(_missFT.days.length?('Ngày quên CC: '+_missFT.days.join(", ")):'Không quên lần nào')+'">'+_missFT.count+'</td>';
         h+='<td style="padding:4px;border:1px solid #eee;text-align:right;font-size:10px;color:'+(bonus>0?'#2e7d32':'#ccc')+'">'+(bonus>0?formatCurrency(bonus):'-')+'</td>';
         h+='<td style="padding:4px;border:1px solid #eee;text-align:right;font-weight:700;font-size:11px;background:#fff8e1">'+formatCurrency(Math.round(totalPay))+'</td>';
         h+='<td style="padding:4px;border:1px solid #eee;text-align:right;font-size:10px;color:'+(deduct>0?'#c62828':'#ccc')+'">'+(deduct>0?formatCurrency(deduct):'-')+'</td>';
@@ -7472,7 +7482,7 @@ function buildPayrollFT(title,emps,mi,y,m){
         h+='<td style="padding:4px;border:1px solid #eee;font-size:9px;max-width:100px;overflow:hidden;text-overflow:ellipsis">'+note+'</td>';
         h+='</tr>';
     });
-    h+='<tr style="background:#f5f5f5;font-weight:700"><td colspan="20" style="padding:4px;border:1px solid #ddd;text-align:right;font-size:10px">TỔNG CỘNG 合計</td>';
+    h+='<tr style="background:#f5f5f5;font-weight:700"><td colspan="21" style="padding:4px;border:1px solid #ddd;text-align:right;font-size:10px">TỔNG CỘNG 合計</td>';
     h+='<td style="padding:4px;border:1px solid #ddd;text-align:right;font-size:10px;background:#e8f5e9;color:#2e7d32">'+formatCurrency(Math.round(grandTotal))+'</td><td></td></tr>';
     h+='</tbody></table></div>';
     return h;
@@ -7532,7 +7542,7 @@ function buildPayrollPT(title,emps,mi,y,m){
     var bg=isBep?'var(--kitchen)':isHT?'#6a1b9a':'var(--service)';
     var h='<div style="margin-top:16px"><div style="background:'+bg+';color:white;padding:8px 14px;border-radius:6px 6px 0 0;font-size:13px;font-weight:700"><i class="fas fa-'+(isBep?'fire':isHT?'hands-helping':'concierge-bell')+'"></i> '+title+' ('+emps.length+')</div>';
     h+='<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#333;color:white">';
-    var cols=['NO.','Mã NV','Họ tên','Chức vụ','Ngày vào','Lương giờ<br>平日時薪','Giờ công<br>上班實數','Tiền công<br>工資','Lương lễ<br>節日時薪','Giờ lễ<br>實工','Tiền lễ<br>工資','CC T7-CN<br>週末出勤','Thưởng<br>獎金','Tổng lương<br>實際工資','Phạt/Trừ<br>罰款','Thực lĩnh<br>實領','Ghi chú'];
+    var cols=['NO.','Mã NV','Họ tên','Chức vụ','Ngày vào','Lương giờ<br>平日時薪','Giờ công<br>上班實數','Tiền công<br>工資','Lương lễ<br>節日時薪','Giờ lễ<br>實工','Tiền lễ<br>工資','CC T7-CN<br>週末出勤','Quên CC<br>忘打卡','Thưởng<br>獎金','Tổng lương<br>實際工資','Phạt/Trừ<br>罰款','Thực lĩnh<br>實領','Ghi chú'];
     h+='<th style="padding:3px;font-size:9px;text-align:center;border:1px solid #555;width:24px"></th>';
     cols.forEach(function(c){h+='<th style="padding:5px 4px;font-size:10px;white-space:nowrap;text-align:center;border:1px solid #555">'+c+'</th>';});
     h+='</tr></thead><tbody>';
@@ -7573,6 +7583,7 @@ function buildPayrollPT(title,emps,mi,y,m){
         var _wkData=_calcWeekendAtt(emp,mi,isCrossDeptRow?emp._crossDept:null);
         var _wkColor=_wkData.full===_wkData.total?'#2e7d32':(_wkData.full>0?'#e65100':'#c62828');
         h+='<td style="padding:4px;border:1px solid #eee;text-align:center;font-size:9px;color:'+_wkColor+'" title="'+_wkData.detail+'"><b>'+_wkData.full+'/'+_wkData.total+'</b><br><span style="font-size:7px">tuần đủ 週</span></td>';
+        var _missPT=_countMissedPunch(emp,mi,isCrossDeptRow?emp._crossDept:null);h+='<td style="padding:4px;border:1px solid #eee;text-align:center;font-weight:700;font-size:11px;color:'+(_missPT.count>0?'#c62828':'#2e7d32')+'" title="'+(_missPT.days.length?('Ngày quên CC: '+_missPT.days.join(", ")):'Không quên lần nào')+'">'+_missPT.count+'</td>';
         h+='<td style="padding:4px;border:1px solid #eee;text-align:right;font-size:10px;color:'+(bonus>0?'#2e7d32':'#ccc')+'">'+(bonus>0?formatCurrency(bonus):'-')+'</td>';
         h+='<td style="padding:4px;border:1px solid #eee;text-align:right;font-weight:700;font-size:11px;background:#fff8e1">'+formatCurrency(Math.round(totalPay))+'</td>';
         h+='<td style="padding:4px;border:1px solid #eee;text-align:right;font-size:10px;color:'+(deduct>0?'#c62828':'#ccc')+'">'+(deduct>0?formatCurrency(deduct):'-')+'</td>';
@@ -7580,7 +7591,7 @@ function buildPayrollPT(title,emps,mi,y,m){
         h+='<td style="padding:4px;border:1px solid #eee;font-size:9px;max-width:100px">'+note+'</td>';
         h+='</tr>';
     });
-    h+='<tr style="background:#f5f5f5;font-weight:700"><td colspan="16" style="padding:4px;border:1px solid #ddd;text-align:right;font-size:10px">TỔNG CỘNG 合計</td>';
+    h+='<tr style="background:#f5f5f5;font-weight:700"><td colspan="17" style="padding:4px;border:1px solid #ddd;text-align:right;font-size:10px">TỔNG CỘNG 合計</td>';
     h+='<td style="padding:4px;border:1px solid #ddd;text-align:right;font-size:10px;background:#e8f5e9;color:#2e7d32">'+formatCurrency(Math.round(grandTotal))+'</td><td></td></tr>';
     h+='</tbody></table></div>';
     return h;
