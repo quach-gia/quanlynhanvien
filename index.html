@@ -1416,6 +1416,7 @@ document.addEventListener('DOMContentLoaded',function(){try{
             if(!cloudOk)_initDefaultData();
             _postInit();
             _autoSyncFromCloud();
+            _startAutoSyncBoss();
             if(CLOUD_SYNC_URL)setInterval(_autoSyncFromCloud,20000);
             // Periodic forced cloud save every 30s if dirty
             if(CLOUD_SYNC_URL)setInterval(function(){if(_cloudDirty&&!_cloudSaving){var j=JSON.stringify(_buildDataObj());_doCloudSave(j);}},30000);
@@ -2449,6 +2450,7 @@ document.addEventListener('DOMContentLoaded',function(){try{
     })();
 _postInit();
     _autoSyncFromCloud();
+    _startAutoSyncBoss();
     // Auto-sync every 60s
     if(CLOUD_SYNC_URL)setInterval(_autoSyncFromCloud,20000);
     // Periodic forced cloud save every 30s if dirty
@@ -4512,6 +4514,72 @@ function syncFromBossConfirm(){
     });
 }
 
+// === AUTO-SYNC BossConfirm (silent, no confirm dialog) ===
+var _autoSyncRunning=false;
+var _autoSyncInterval=null;
+function _autoSyncBossConfirm(){
+    var apiUrl=(typeof empPortalConfig!=='undefined'&&empPortalConfig.apiUrl)?empPortalConfig.apiUrl:'';
+    var pwd=(typeof empPortalConfig!=='undefined'&&empPortalConfig.bossPassword)?empPortalConfig.bossPassword:'quachgia2026';
+    if(!apiUrl||_autoSyncRunning)return;
+    _autoSyncRunning=true;
+    var url=apiUrl+'?action=getConfirmedAttendance&bossPassword='+encodeURIComponent(pwd);
+    fetch(url,{redirect:'follow'}).then(function(r){return r.json();}).then(function(res){
+        _autoSyncRunning=false;
+        if(!res.success||!(res.records||res.data||[]).length)return;
+        var recs=res.records||res.data||[];
+        recs.sort(function(a,b){return new Date(b.confirmedAt||0).getTime()-new Date(a.confirmedAt||0).getTime();});
+        var grouped={};var latestTs={},latestStatus={};
+        recs.forEach(function(item){
+            var ymd=_parseDateStrBC(item.date);if(!ymd)return;
+            var gKey=ymd+'|'+item.empId;
+            var ts=new Date(item.confirmedAt||0).getTime();
+            var rawNote=String(item.note||'');var noteStatus=null;var cleanNote=rawNote;
+            var sm=rawNote.match(/^\[STATUS:(\w+)\]/);
+            if(sm){noteStatus=sm[1];cleanNote=rawNote.substring(sm[0].length);}
+            var effectiveStatus=noteStatus||item.status||'confirmed';
+            var cIn=_parseTimeStrBC(item.confirmedIn);
+            var cOut=_parseTimeStrBC(item.confirmedOut);
+            if(!noteStatus&&!cIn&&!cOut)return;
+            if(latestTs[gKey]===undefined){latestTs[gKey]=ts;latestStatus[gKey]=effectiveStatus;}
+            if(latestStatus[gKey]==='deleted'||latestStatus[gKey]==='cancelled')return;
+            if(latestTs[gKey]-ts>10000)return;
+            if(!grouped[gKey]){grouped[gKey]={date:ymd,empId:item.empId,status:effectiveStatus,note:cleanNote,segments:[]};}
+            var sIdx=typeof item.shiftIndex==='number'?item.shiftIndex:grouped[gKey].segments.length;
+            grouped[gKey].segments[sIdx]={start:cIn,end:cOut};
+        });
+        var updated=0,offCount=0;var nowISO=new Date().toISOString();
+        Object.keys(grouped).forEach(function(gk){
+            var g=grouped[gk];
+            g.segments=g.segments.filter(function(s){return !!s;});
+            var sf=findScheduleForEmp(g.date,g.empId);var dk=sf.dk;
+            if(g.status==='off'){
+                attBossConfirmations[dk]={status:'off',note:g.note||'OFF',checkin:'',checkout:'',hours:0,segments:[],syncedAt:nowISO};
+                attConfirmations[dk]=true;offCount++;return;
+            }
+            if(g.segments.length===0||(!g.segments[0].start&&!g.segments[0].end))return;
+            var totalH=0;
+            g.segments.forEach(function(s){if(s.start&&s.end)totalH+=_hoursBetween(s.start,s.end);});
+            totalH=Math.round(totalH*100)/100;
+            var firstSeg=g.segments[0]||{};var lastSeg=g.segments[g.segments.length-1]||{};
+            attBossConfirmations[dk]={status:g.status||'confirmed',checkin:firstSeg.start||'',checkout:lastSeg.end||firstSeg.end||'',hours:totalH,segments:g.segments,note:g.note||'',syncedAt:nowISO};
+            attConfirmations[dk]=true;updated++;
+        });
+        if(updated>0||offCount>0){
+            saveData();
+            if(typeof loadAttendance==='function')loadAttendance();
+            if(typeof loadPayroll==='function')loadPayroll();
+            console.log('Auto-sync BossConfirm: '+updated+' updated, '+offCount+' OFF');
+        }
+    }).catch(function(e){_autoSyncRunning=false;console.warn('Auto-sync BossConfirm failed:',e.message);});
+}
+function _startAutoSyncBoss(){
+    // Run once on load (delay 3s to let page settle)
+    setTimeout(_autoSyncBossConfirm,3000);
+    // Then every 5 minutes
+    if(_autoSyncInterval)clearInterval(_autoSyncInterval);
+    _autoSyncInterval=setInterval(_autoSyncBossConfirm,5*60*1000);
+}
+
 function bulkConfirmAttendance(){
     var keys=Object.keys(attSelectedCells);
     if(!keys.length){showSuccess('Chưa chọn ô nào! Hãy bôi chọn các ô trước 請先選擇格子');return;}
@@ -5336,69 +5404,142 @@ function openAttDetail(empId,mi,mode){
     var dayNames=['CN','T2','T3','T4','T5','T6','T7'];
     document.getElementById('attDetailTitle').textContent=emp.name+' '+emp.nameCN+' — '+m+'/'+y;
     if(mode==='convert'){openAttDetailConvert(emp,mi,y,m,days,dayNames);return;}
+    if(mode==='actual'){_openAttDetailActual(emp,empId,mi,y,m,days,dayNames);return;}
+    // === SCHEDULE MODE: full detail like openDayDetail ===
+    var typeLabel=emp.type==='Fulltime'?'<span style="background:#e8f5e9;color:#2e7d32;padding:1px 6px;border-radius:4px;font-size:10px">FT</span>':'<span style="background:#fff3e0;color:#e65100;padding:1px 6px;border-radius:4px;font-size:10px">PT</span>';
+    var h='<div style="margin-bottom:8px;font-size:12px;color:#555">'+typeLabel+' <span style="margin-left:6px">'+emp.dept+'</span>'+(emp.position?' — '+emp.position:'')+'</div>';
+    h+='<div style="max-height:75vh;overflow-y:auto"><table style="width:100%;border-collapse:collapse;font-size:11px">';
+    h+='<thead><tr style="background:#333;color:#fff"><th style="padding:6px;border:1px solid #555;width:55px">Ngày 日期</th><th style="padding:6px;border:1px solid #555;width:35px">Thứ</th><th style="padding:6px;text-align:center;border:1px solid #555;width:100px">Ca làm 班次</th><th style="padding:6px;text-align:center;border:1px solid #555;width:45px">Giờ 時數</th><th style="padding:6px;text-align:center;border:1px solid #555;width:90px">Giờ chấm công 打卡</th><th style="padding:6px;text-align:center;border:1px solid #555;width:150px;background:#e65100;color:#fff">Thời gian tính lương<br>工資時間</th><th style="padding:6px;text-align:center;border:1px solid #555;width:55px;background:#f57f17;color:#fff">Số giờ<br>時數</th><th style="padding:6px;text-align:center;border:1px solid #555;width:50px">Xác nhận 確認</th><th style="padding:6px;text-align:center;border:1px solid #555;width:40px">Xóa ca 刪班</th></tr></thead><tbody>';
+    var totalSchedHrs=0,totalPayrollHrs=0,workDays=0;
+    for(var i=1;i<=days;i++){
+        var d=new Date(y,m-1,i);var dw=d.getDay();var we=dw===0||dw===6;
+        var dateStr=mi+'-'+String(i).padStart(2,'0');
+        var dk=dateStr+'-'+empId;
+        var sh=schedules[dk];var raw=attTimesheetData[dk];var bc=attBossConfirmations[dk];
+        var isOff=bc&&bc.status==='off';
+        var schedHrs=sh&&sh.start&&sh.end?getScheduleHours(empId,dk):0;
+        if(schedHrs>0||raw||bc)workDays++;
+        // === OFF row ===
+        if(isOff){
+            h+='<tr style="background:#eeeeee;opacity:0.85">';
+            h+='<td style="padding:4px;border:1px solid #eee;font-weight:600">'+i+'/'+m+'</td>';
+            h+='<td style="padding:4px;border:1px solid #eee;text-align:center">'+dayNames[dw]+'</td>';
+            h+='<td style="padding:4px;border:1px solid #eee;text-align:center;color:#999">-</td>';
+            h+='<td style="padding:4px;border:1px solid #eee;text-align:center;color:#757575;font-weight:700">0.0h</td>';
+            h+='<td style="padding:4px;border:1px solid #eee;text-align:center;color:#999">-</td>';
+            h+='<td style="padding:4px;border:1px solid #eee;text-align:center;color:#999">-</td>';
+            h+='<td style="padding:4px;border:1px solid #eee;text-align:center;color:#999">-</td>';
+            h+='<td style="padding:4px;border:1px solid #eee;text-align:center"><span style="background:#757575;color:white;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700">OFF</span></td>';
+            h+='<td style="padding:4px;border:1px solid #eee;text-align:center"><span style="cursor:pointer;color:#c62828;font-size:14px" onclick="event.stopPropagation();if(confirm(\'Xóa OFF? 確定刪除？\')){_dayDetailDel2(\''+dk+'\',\''+dateStr+'\');openAttDetail(\''+empId+'\',\''+mi+'\',\'schedule\');}" title="Xóa OFF"><i class="fas fa-trash-alt"></i></span></td>';
+            h+='</tr>';
+            continue;
+        }
+        totalSchedHrs+=schedHrs;
+        // Clock-in info
+        var actualInfo='-';
+        if(raw&&raw.hours){
+            if(raw.segments&&raw.segments.length>1){
+                actualInfo='<span style="color:#1565c0;font-weight:600;font-size:10px">'+raw.segments.map(function(s){return _segIn(s)+'-'+_segOut(s);}).join(', ')+'</span>';
+            }else{
+                actualInfo='<span style="color:#1565c0;font-weight:600">'+(raw.checkin||'')+' → '+(raw.checkout||'')+'</span>';
+            }
+            actualInfo+='<br><span style="font-size:10px;color:#555">('+raw.hours.toFixed(1)+'h)</span>';
+        }else if(raw&&raw.checkin){
+            actualInfo='<span style="color:#1565c0;font-weight:600">'+(raw.checkin||'')+' → '+(raw.checkout||'')+'</span>';
+        }
+        // Shift label
+        var shiftLabel='-';
+        if(sh&&sh.start&&sh.end){
+            var sParts=sh.start.split(','),eParts=sh.end.split(',');
+            shiftLabel=sParts.map(function(sp,si){return fmt(sp)+'-'+fmt(eParts[si]||'');}).join(', ');
+        }
+        // Payroll time cells (reuse existing helper)
+        var item={sh:sh,raw:raw};
+        var payrollCells=_renderPayrollTimeCells(item,dk,empId,dateStr);
+        // Parse payroll hours for total
+        var pRaw=_payrollRaw(dk);
+        var pHrs=0;
+        if(pRaw&&pRaw.segments&&pRaw.segments.length){pHrs=_payrollHours(pRaw,sh);}
+        else if(pRaw&&pRaw.checkin){pHrs=_payrollHours(pRaw,sh);}
+        totalPayrollHrs+=pHrs;
+        // Confirm button
+        var confirmBtn=_confirmCellHtml(dk,dateStr,!!attConfirmations[dk]);
+        // Delete button
+        var delBtn='-';
+        if(sh&&sh.start&&sh.end){
+            delBtn='<span style="cursor:pointer;color:#c62828;font-size:14px" onclick="event.stopPropagation();if(confirm(\'Xóa ca ngày '+i+'/'+m+'? 確定刪除？\')){_dayDetailDel2(\''+dk+'\',\''+dateStr+'\');openAttDetail(\''+empId+'\',\''+mi+'\',\'schedule\');}" title="Xóa ca"><i class="fas fa-trash-alt"></i></span>';
+        }
+        h+='<tr style="background:'+(we?'#fffde7':'')+'">';
+        h+='<td style="padding:4px;border:1px solid #eee;font-weight:600">'+i+'/'+m+'</td>';
+        h+='<td style="padding:4px;border:1px solid #eee;text-align:center">'+dayNames[dw]+'</td>';
+        h+='<td style="padding:4px;border:1px solid #eee;text-align:center;color:#1565c0;font-weight:600;font-size:10px">'+shiftLabel+'</td>';
+        h+='<td style="padding:4px;border:1px solid #eee;text-align:center;font-weight:600">'+(schedHrs>0?schedHrs.toFixed(1)+'h':'—')+'</td>';
+        h+='<td style="padding:4px;border:1px solid #eee;text-align:center;font-size:10px">'+actualInfo+'</td>';
+        h+=payrollCells;
+        h+='<td style="padding:4px;border:1px solid #eee;text-align:center">'+confirmBtn+'</td>';
+        h+='<td style="padding:4px;border:1px solid #eee;text-align:center">'+delBtn+'</td>';
+        h+='</tr>';
+    }
+    // TOTAL row
+    h+='<tr style="background:#e3f2fd;font-weight:700">';
+    h+='<td colspan="3" style="padding:6px;border:1px solid #ddd">TỔNG 總計</td>';
+    h+='<td style="padding:6px;border:1px solid #ddd;text-align:center;color:#1565c0">'+totalSchedHrs.toFixed(1)+'h</td>';
+    h+='<td style="border:1px solid #ddd"></td>';
+    h+='<td style="padding:6px;border:1px solid #ddd;text-align:center;background:#fff3e0;color:#e65100">'+totalPayrollHrs.toFixed(1)+'h</td>';
+    h+='<td style="padding:6px;border:1px solid #ddd;text-align:center;background:#fff8e1;color:#e65100">'+totalPayrollHrs.toFixed(1)+'h</td>';
+    h+='<td colspan="2" style="border:1px solid #ddd"></td>';
+    h+='</tr></tbody></table></div>';
+    h+='<div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 0;border-top:1px solid #eee;margin-top:8px">';
+    h+='<button onclick="closeModal(\'attDetailModal\')" class="btn btn-outline" style="padding:6px 20px;font-size:11px"><i class="fas fa-times"></i> Đóng 關閉</button>';
+    h+='<button onclick="saveData();closeModal(\'attDetailModal\');loadAttendance();showSuccess(\'Đã lưu!\')" class="btn btn-primary" style="padding:6px 20px;font-size:11px"><i class="fas fa-save"></i> Lưu 儲存</button>';
+    h+='</div>';
+    document.getElementById('attDetailContent').innerHTML=h;
+    document.getElementById('attDetailModalContent').style.maxWidth='900px';
+    document.getElementById('attDetailModal').classList.add('active');
+}
+// === ACTUAL MODE (extracted from old openAttDetail) ===
+function _openAttDetailActual(emp,empId,mi,y,m,days,dayNames){
     var h='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#333;color:white"><th style="padding:6px">Ngày</th><th>Thứ</th>';
-    if(mode==='schedule')h+='<th>Ca làm</th><th>Giờ</th><th>Công</th>';
-    if(mode==='actual')h+='<th>Vào gốc</th><th>Ra gốc</th><th>Giờ gốc</th><th style="background:#8B0000">Boss XN<br>Vào→Ra</th><th style="background:#8B0000">Boss<br>Giờ</th><th style="background:#2e7d32">Tính lương</th>';
+    h+='<th>Vào gốc</th><th>Ra gốc</th><th>Giờ gốc</th><th style="background:#8B0000">Boss XN<br>Vào→Ra</th><th style="background:#8B0000">Boss<br>Giờ</th><th style="background:#2e7d32">Tính lương</th>';
     h+='</tr></thead><tbody>';
-    var totalHrs=0,totalDays=0,totalEffHrs=0;
+    var totalHrs=0,totalEffHrs=0;
     for(var i=1;i<=days;i++){
         var d=new Date(y,m-1,i);var dw=d.getDay();var we=dw===0||dw===6;
         var dk=mi+'-'+String(i).padStart(2,'0')+'-'+empId;
         var sh=schedules[dk];var raw=attTimesheetData[dk];var bc=attBossConfirmations[dk];
-        var schedHrs=sh&&sh.start&&sh.end?getScheduleHours(empId,dk):0;
         var actualHrs=raw&&raw.hours?raw.hours:0;
         var bossHrs=(bc&&bc.status!=='off'&&bc.hours)?bc.hours:0;
         var isOff=bc&&bc.status==='off';
-        // Gio dung cho luong: uu tien Boss XN
         var effHrs=isOff?0:(bossHrs||actualHrs);
-        var useHrs=mode==='actual'?effHrs:schedHrs;
-        if(useHrs>0){totalHrs+=useHrs;totalEffHrs+=effHrs;
-            if(emp.wageType==='monthly_fixed')totalDays+=1;
-            else if(emp.type==='Fulltime')totalDays+=convertToDay(calcEffectiveHours(useHrs,emp,sh),emp);
-            else totalDays+=useHrs;
-        }
-        h+='<tr style="background:'+(we?'#fffde7':(isOff?'#eeeeee':''))+';cursor:pointer" onclick="openAttCellEdit(\''+empId+'\','+i+',\''+mi+'\')">';
+        if(effHrs>0){totalHrs+=effHrs;totalEffHrs+=effHrs;}
+        h+='<tr style="background:'+(we?'#fffde7':(isOff?'#eeeeee':''))+'">';
         h+='<td style="padding:4px;border:1px solid #eee;font-weight:600">'+i+'/'+m+'</td>';
         h+='<td style="padding:4px;border:1px solid #eee;text-align:center">'+dayNames[dw]+'</td>';
-        if(mode==='schedule'){
-            h+='<td style="padding:4px;border:1px solid #eee;text-align:center;color:#1565c0">'+(sh&&sh.start?sh.start+'-'+sh.end:'—')+'</td>';
-            h+='<td style="padding:4px;border:1px solid #eee;text-align:center;font-weight:600">'+(schedHrs>0?schedHrs.toFixed(1)+'h':'—')+'</td>';
-            var sv=emp.wageType==='monthly_fixed'?(schedHrs>0?1:0):(emp.type==='Fulltime'?convertToDay(calcEffectiveHours(schedHrs,emp,sh),emp):schedHrs);
-            h+='<td style="padding:4px;border:1px solid #eee;text-align:center;font-weight:700;color:#2e7d32">'+(sv>0?(emp.wageType==='monthly_fixed'?'1':(emp.type==='Fulltime'?sv.toFixed(2):sv.toFixed(1)+'h')):'—')+'</td>';
+        h+='<td style="padding:4px;border:1px solid #eee;text-align:center;color:#2e7d32">'+(raw&&raw.checkin?raw.checkin:'—')+'</td>';
+        h+='<td style="padding:4px;border:1px solid #eee;text-align:center;color:#c62828">'+(raw&&raw.checkout?raw.checkout:'—')+'</td>';
+        h+='<td style="padding:4px;border:1px solid #eee;text-align:center;font-weight:600">'+(actualHrs>0?actualHrs.toFixed(1)+'h':'—')+'</td>';
+        if(isOff){
+            h+='<td colspan="2" style="padding:4px;border:1px solid #eee;text-align:center;background:#eeeeee;color:#757575;font-weight:700">OFF '+(bc.note?'<span style="font-size:9px;font-weight:400">('+bc.note+')</span>':'')+'</td>';
+        }else if(bc){
+            h+='<td style="padding:4px;border:1px solid #eee;text-align:center;background:#fff5f5;color:#8B0000;font-weight:600">'+(bc.checkin||'—')+' → '+(bc.checkout||'—')+'</td>';
+            h+='<td style="padding:4px;border:1px solid #eee;text-align:center;background:#fff5f5;color:#8B0000;font-weight:700">'+(bossHrs>0?bossHrs.toFixed(1)+'h':'—')+'</td>';
+        }else{
+            h+='<td style="padding:4px;border:1px solid #eee;text-align:center;color:#bbb">—</td>';
+            h+='<td style="padding:4px;border:1px solid #eee;text-align:center;color:#bbb">—</td>';
         }
-        if(mode==='actual'){
-            // Cot gio cham cong goc
-            h+='<td style="padding:4px;border:1px solid #eee;text-align:center;color:#2e7d32">'+(raw&&raw.checkin?raw.checkin:'—')+'</td>';
-            h+='<td style="padding:4px;border:1px solid #eee;text-align:center;color:#c62828">'+(raw&&raw.checkout?raw.checkout:'—')+'</td>';
-            h+='<td style="padding:4px;border:1px solid #eee;text-align:center;font-weight:600">'+(actualHrs>0?actualHrs.toFixed(1)+'h':'—')+'</td>';
-            // Cot Boss XN
-            if(isOff){
-                h+='<td colspan="2" style="padding:4px;border:1px solid #eee;text-align:center;background:#eeeeee;color:#757575;font-weight:700">OFF '+(bc.note?'<span style="font-size:9px;font-weight:400">('+bc.note+')</span>':'')+'</td>';
-            }else if(bc){
-                h+='<td style="padding:4px;border:1px solid #eee;text-align:center;background:#fff5f5;color:#8B0000;font-weight:600">'+(bc.checkin||'—')+' → '+(bc.checkout||'—')+'</td>';
-                h+='<td style="padding:4px;border:1px solid #eee;text-align:center;background:#fff5f5;color:#8B0000;font-weight:700">'+(bossHrs>0?bossHrs.toFixed(1)+'h':'—')+'</td>';
-            }else{
-                h+='<td style="padding:4px;border:1px solid #eee;text-align:center;color:#bbb">—</td>';
-                h+='<td style="padding:4px;border:1px solid #eee;text-align:center;color:#bbb">—</td>';
-            }
-            // Cot tinh luong (uu tien Boss XN)
-            var calcText=isOff?'<span style="color:#757575">0 (OFF)</span>':(effHrs>0?effHrs.toFixed(1)+'h':'—');
-            var calcColor=isOff?'#757575':(bossHrs>0?'#8B0000':'#2e7d32');
-            h+='<td style="padding:4px;border:1px solid #eee;text-align:center;background:#e8f5e9;font-weight:700;color:'+calcColor+'">'+calcText+'</td>';
-        }
+        var calcText=isOff?'<span style="color:#757575">0 (OFF)</span>':(effHrs>0?effHrs.toFixed(1)+'h':'—');
+        var calcColor=isOff?'#757575':(bossHrs>0?'#8B0000':'#2e7d32');
+        h+='<td style="padding:4px;border:1px solid #eee;text-align:center;background:#e8f5e9;font-weight:700;color:'+calcColor+'">'+calcText+'</td>';
         h+='</tr>';
     }
     h+='<tr style="background:#e8f5e9;font-weight:700"><td colspan="2" style="padding:6px;border:1px solid #ddd">TỔNG</td>';
-    if(mode==='schedule'){h+='<td style="border:1px solid #ddd"></td>';h+='<td style="padding:6px;border:1px solid #ddd;text-align:center">'+totalHrs.toFixed(1)+'h</td>';h+='<td style="padding:6px;border:1px solid #ddd;text-align:center;color:#2e7d32">'+(emp.wageType==='monthly_fixed'?Math.round(totalDays)+' ngày':(emp.type==='Fulltime'?totalDays.toFixed(2):totalDays.toFixed(1)+'h'))+'</td>';}
-    if(mode==='actual'){h+='<td colspan="4" style="border:1px solid #ddd;text-align:right;padding:6px">Tổng giờ tính lương:</td>';h+='<td style="padding:6px;border:1px solid #ddd;text-align:center;background:#fff5f5;color:#8B0000">'+totalEffHrs.toFixed(1)+'h</td>';h+='<td style="padding:6px;border:1px solid #ddd;text-align:center;background:#e8f5e9;color:#2e7d32">'+totalEffHrs.toFixed(1)+'h</td>';}
+    h+='<td colspan="4" style="border:1px solid #ddd;text-align:right;padding:6px">Tổng giờ tính lương:</td>';
+    h+='<td style="padding:6px;border:1px solid #ddd;text-align:center;background:#fff5f5;color:#8B0000">'+totalEffHrs.toFixed(1)+'h</td>';
+    h+='<td style="padding:6px;border:1px solid #ddd;text-align:center;background:#e8f5e9;color:#2e7d32">'+totalEffHrs.toFixed(1)+'h</td>';
     h+='</tr></tbody></table>';
-
-    // Chu giai
-    if(mode==='actual'){
-        h+='<div style="margin-top:10px;padding:8px 10px;background:#fff8e1;border-left:3px solid #f57f17;font-size:10px;color:#555;line-height:1.6">';
-        h+='<b>📌 Ghi chú:</b> Cột <b style="color:#2e7d32">Giờ gốc</b> = giờ chấm công gốc của NV (không thay đổi). Cột <b style="color:#8B0000">Boss XN</b> = giờ Boss xác nhận trên BossConfirm. Cột <b style="color:#2e7d32">Tính lương</b> ưu tiên giờ Boss XN nếu có, fallback giờ gốc.';
-        h+='</div>';
-    }
+    h+='<div style="margin-top:10px;padding:8px 10px;background:#fff8e1;border-left:3px solid #f57f17;font-size:10px;color:#555;line-height:1.6">';
+    h+='<b>📌 Ghi chú:</b> Cột <b style="color:#2e7d32">Giờ gốc</b> = giờ chấm công gốc. Cột <b style="color:#8B0000">Boss XN</b> = giờ Boss xác nhận. Cột <b style="color:#2e7d32">Tính lương</b> ưu tiên Boss XN.';
+    h+='</div>';
     h+='<div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 0;border-top:1px solid #eee;margin-top:8px">';
     h+='<button onclick="closeModal(\'attDetailModal\')" class="btn btn-outline" style="padding:6px 20px;font-size:11px"><i class="fas fa-times"></i> Đóng 關閉</button>';
     h+='<button onclick="saveData();closeModal(\'attDetailModal\');loadAttendance();showSuccess(\'Đã lưu!\')" class="btn btn-primary" style="padding:6px 20px;font-size:11px"><i class="fas fa-save"></i> Lưu 儲存</button>';
@@ -10125,4 +10266,5 @@ function exportPayrollExcel(){_ensureXLSX(function(){
     showSuccess('Đã tải Excel 已下載薪資表');
 });}
 </script>
-</bod
+</body>
+</html>
