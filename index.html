@@ -4851,57 +4851,109 @@ function _estPayDay(emp,ds,viewDept){
     }
     return {hrs:Math.round(hrs*10)/10,pay:pay,hol:holMul>0,nc:Math.round(nc*10)/10,ot:Math.round(ot*10)/10};
 }
+function _fcK(n){
+    n=Math.round(n);
+    if(n<=0)return '0';
+    if(n>=1000000)return (n/1000000).toFixed(1).replace('.',',')+'tr';
+    if(n>=1000)return Math.round(n/1000)+'k';
+    return String(n);
+}
 function buildSchedCostSummary(emps,dates,cls){
     if(!emps||!emps.length||!dates||!dates.length)return '';
     var vDept=cls==='kitchen'?'Bếp':(cls==='support'?'Hỗ trợ khác':'Phục vụ');
+    var compact=dates.length>10;
+    var fmt=function(n){return compact?_fcK(n):formatCurrency(Math.round(n));};
+    var dnames=['CN','T2','T3','T4','T5','T6','T7'];
     var rows=[],gPay=0,gHrs=0,gDays=0,gHol=0,gFT=0,gPT=0;
+    var dayPay=[],dayCnt=[],dayHrs=[];
+    dates.forEach(function(){dayPay.push(0);dayCnt.push(0);dayHrs.push(0);});
     emps.forEach(function(emp){
-        var tH=0,tP=0,tD=0,tHol=0,tOt=0;
-        dates.forEach(function(d){
+        var tH=0,tP=0,tD=0,tHol=0,tOt=0,cells=[];
+        dates.forEach(function(d,di){
             var ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
             var r=_estPayDay(emp,ds,vDept);
-            if(!r)return;
+            if(!r){cells.push(null);return;}
+            cells.push(r);
             tH+=r.hrs;tP+=r.pay;tD++;tOt+=r.ot;if(r.hol)tHol++;
+            dayPay[di]+=r.pay;dayCnt[di]++;dayHrs[di]+=r.hrs;
         });
         if(tD===0)return;
-        rows.push({e:emp,h:tH,p:tP,d:tD,hol:tHol,ot:tOt});
+        rows.push({e:emp,h:tH,p:tP,d:tD,hol:tHol,ot:tOt,c:cells});
         gPay+=tP;gHrs+=tH;gDays+=tD;gHol+=tHol;
         if(emp.type==='Fulltime')gFT+=tP;else gPT+=tP;
     });
     if(!rows.length)return '';
+    var maxDay=0,maxIdx=-1;
+    dayPay.forEach(function(v,i){if(v>maxDay){maxDay=v;maxIdx=i;}});
     var d0=dates[0],d1=dates[dates.length-1];
     var rangeTxt=d0.getDate()+'/'+(d0.getMonth()+1)+' → '+d1.getDate()+'/'+(d1.getMonth()+1);
     var bg=cls==='kitchen'?'var(--kitchen)':cls==='support'?'#6a1b9a':'var(--service)';
+    var avgDay=gPay/dates.length;
+    var SK='position:sticky;left:0;z-index:3;';
     var h='<div id="schedCostBox" style="margin-top:14px;border:1px solid #ddd;border-radius:8px;overflow:hidden;background:white;box-shadow:0 1px 4px rgba(0,0,0,.08)">';
     h+='<div style="background:'+bg+';color:white;padding:8px 14px;font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">';
     h+='<span><i class="fas fa-calculator"></i> Dự kiến lương 預估薪資 <span style="font-size:10px;opacity:.85;font-weight:400">('+rangeTxt+')</span></span>';
-    h+='<span style="font-size:11px;opacity:.92">'+gDays+' công · '+gHrs.toFixed(1)+'h</span></div>';
-    h+='<div style="max-height:340px;overflow-y:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
-    h+='<thead><tr style="background:#f5f5f5;position:sticky;top:0;z-index:2">';
-    ['NV 員工','Loại','Công 班','Giờ 時','Lễ 節','Tiền dự kiến 預估'].forEach(function(c,i){
-        h+='<th style="padding:6px 8px;font-size:10px;border-bottom:2px solid #ddd;background:#f5f5f5;text-align:'+(i<2?'left':i===5?'right':'center')+'">'+c+'</th>';
+    h+='<span style="font-size:11px;opacity:.92">'+gDays+' công · '+gHrs.toFixed(1)+'h · TB '+_fcK(avgDay)+'/ngày</span></div>';
+    h+='<div style="max-height:420px;overflow:auto"><table style="border-collapse:separate;border-spacing:0;font-size:12px;min-width:100%">';
+    h+='<thead><tr style="background:#eceff1">';
+    h+='<th style="'+SK+'padding:6px 8px;font-size:10px;border-bottom:2px solid #b0bec5;border-right:2px solid #b0bec5;background:#eceff1;text-align:left;min-width:110px">NV 員工</th>';
+    h+='<th style="padding:6px 4px;font-size:10px;border-bottom:2px solid #b0bec5;background:#eceff1;text-align:center">Loại</th>';
+    dates.forEach(function(d,di){
+        var dow=d.getDay(),we=(dow===0||dow===6);
+        var ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        var isHol=getHolidayMultiplier(ds)>0;
+        var hb=isHol?'#fff3cd':(we?'#fce4ec':'#eceff1');
+        var hc=isHol?'#b8860b':(we?'#c62828':'#546e7a');
+        h+='<th style="padding:5px 4px;font-size:10px;border-bottom:2px solid #b0bec5;background:'+hb+';color:'+hc+';text-align:center;min-width:'+(compact?'54':'80')+'px;white-space:nowrap">'+dnames[dow]+'<br><span style="font-size:9px;font-weight:400">'+d.getDate()+'/'+(d.getMonth()+1)+'</span>'+(isHol?'<br><span style="font-size:7px">LỄ</span>':'')+'</th>';
     });
+    h+='<th style="padding:6px 4px;font-size:10px;border-bottom:2px solid #b0bec5;background:#eceff1;text-align:center;border-left:2px solid #b0bec5">Công</th>';
+    h+='<th style="padding:6px 4px;font-size:10px;border-bottom:2px solid #b0bec5;background:#eceff1;text-align:center">Giờ</th>';
+    h+='<th style="padding:6px 8px;font-size:10px;border-bottom:2px solid #b0bec5;background:#e8f5e9;text-align:right;min-width:90px">Tổng tuần 週計</th>';
     h+='</tr></thead><tbody>';
     rows.sort(function(a,b){return b.p-a.p;});
     rows.forEach(function(r,i){
+        var rb=i%2?'#fafafa':'white';
         var tp=r.e.type==='Fulltime'?'<span style="background:#e8f5e9;color:#2e7d32;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700">FT</span>':'<span style="background:#fff3e0;color:#e65100;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700">PT</span>';
         var xb=(r.e.dept!==vDept)?'<span style="background:#e65100;color:white;padding:0 4px;border-radius:3px;font-size:8px;margin-left:4px">⇄</span>':'';
-        h+='<tr style="background:'+(i%2?'#fafafa':'white')+'">';
-        h+='<td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;font-weight:600;font-size:11px">'+r.e.name+xb+'</td>';
-        h+='<td style="padding:5px 8px;border-bottom:1px solid #f0f0f0">'+tp+'</td>';
-        h+='<td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;text-align:center;font-size:11px">'+r.d+'</td>';
-        h+='<td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;text-align:center;font-size:11px">'+r.h.toFixed(1)+(r.ot>0?'<span style="color:#e65100;font-size:9px"> +'+r.ot.toFixed(1)+'TC</span>':'')+'</td>';
-        h+='<td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;text-align:center;font-size:11px;color:'+(r.hol?'#d4a017':'#ccc')+'">'+(r.hol||'-')+'</td>';
-        h+='<td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:700;font-size:12px;color:#2e7d32">'+formatCurrency(Math.round(r.p))+'</td>';
+        h+='<tr>';
+        h+='<td style="'+SK+'padding:5px 8px;border-bottom:1px solid #f0f0f0;border-right:2px solid #e0e0e0;font-weight:600;font-size:11px;background:'+rb+'">'+r.e.name+xb+'</td>';
+        h+='<td style="padding:5px 4px;border-bottom:1px solid #f0f0f0;text-align:center;background:'+rb+'">'+tp+'</td>';
+        r.c.forEach(function(cell,di){
+            var dow=dates[di].getDay(),we=(dow===0||dow===6);
+            if(!cell){
+                h+='<td style="padding:5px 4px;border-bottom:1px solid #f0f0f0;text-align:center;font-size:11px;color:#ddd;background:'+(we?'#fdf6f8':rb)+'">·</td>';
+            }else{
+                var cc=cell.hol?'#b8860b':'#2e7d32';
+                var cbg=cell.hol?'#fffbf0':(we?'#fdf6f8':rb);
+                h+='<td title="'+cell.hrs.toFixed(1)+'h'+(cell.ot>0?' (+'+cell.ot.toFixed(1)+'h TC)':'')+' — '+formatCurrency(Math.round(cell.pay))+'đ" style="padding:5px 4px;border-bottom:1px solid #f0f0f0;text-align:center;font-size:11px;font-weight:600;color:'+cc+';background:'+cbg+'">'+fmt(cell.pay)+'<br><span style="font-size:8px;color:#999;font-weight:400">'+cell.hrs.toFixed(1)+'h</span></td>';
+            }
+        });
+        h+='<td style="padding:5px 4px;border-bottom:1px solid #f0f0f0;text-align:center;font-size:11px;background:'+rb+';border-left:2px solid #e0e0e0">'+r.d+'</td>';
+        h+='<td style="padding:5px 4px;border-bottom:1px solid #f0f0f0;text-align:center;font-size:11px;background:'+rb+'">'+r.h.toFixed(1)+(r.ot>0?'<span style="color:#e65100;font-size:9px"> +'+r.ot.toFixed(1)+'</span>':'')+'</td>';
+        h+='<td style="padding:5px 8px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:700;font-size:12px;color:#2e7d32;background:#f1f8e9">'+formatCurrency(Math.round(r.p))+'</td>';
         h+='</tr>';
     });
-    h+='</tbody><tfoot><tr style="background:#fff8e1;font-weight:700"><td colspan="2" style="padding:8px;font-size:11px;border-top:2px solid #ffd54f">TỔNG 合計 ('+rows.length+' NV)</td>';
-    h+='<td style="padding:8px;text-align:center;font-size:12px;border-top:2px solid #ffd54f">'+gDays+'</td>';
+    h+='</tbody><tfoot>';
+    h+='<tr style="background:#fff8e1;font-weight:700">';
+    h+='<td style="'+SK+'padding:8px;font-size:11px;border-top:2px solid #ffd54f;border-right:2px solid #ffd54f;background:#fff8e1">TIỀN/NGÀY 每日</td>';
+    h+='<td style="padding:8px;border-top:2px solid #ffd54f"></td>';
+    dayPay.forEach(function(v,di){
+        var hot=(di===maxIdx&&v>0);
+        h+='<td title="'+formatCurrency(Math.round(v))+'đ · '+dayCnt[di]+' NV · '+dayHrs[di].toFixed(1)+'h" style="padding:6px 4px;border-top:2px solid #ffd54f;text-align:center;font-size:11px;color:'+(hot?'#c62828':'#e65100')+';background:'+(hot?'#ffe0e0':'#fff8e1')+'">'+(v>0?_fcK(v):'-')+(hot?'<br><span style="font-size:7px">cao nhất</span>':'')+'</td>';
+    });
+    h+='<td style="padding:8px;text-align:center;font-size:12px;border-top:2px solid #ffd54f;border-left:2px solid #ffd54f">'+gDays+'</td>';
     h+='<td style="padding:8px;text-align:center;font-size:12px;border-top:2px solid #ffd54f">'+gHrs.toFixed(1)+'</td>';
-    h+='<td style="padding:8px;text-align:center;font-size:12px;color:#d4a017;border-top:2px solid #ffd54f">'+(gHol||'-')+'</td>';
-    h+='<td style="padding:8px;text-align:right;font-size:15px;color:#c62828;border-top:2px solid #ffd54f">'+formatCurrency(Math.round(gPay))+'</td></tr></tfoot></table></div>';
+    h+='<td style="padding:8px;text-align:right;font-size:15px;color:#c62828;border-top:2px solid #ffd54f;background:#ffebee">'+formatCurrency(Math.round(gPay))+'</td>';
+    h+='</tr>';
+    h+='<tr style="background:#f5f5f5;font-size:10px;color:#666">';
+    h+='<td style="'+SK+'padding:5px 8px;border-right:2px solid #e0e0e0;background:#f5f5f5">Số NV 人數</td><td style="background:#f5f5f5"></td>';
+    dayCnt.forEach(function(c,di){
+        h+='<td style="padding:4px;text-align:center;background:#f5f5f5;font-weight:600;color:'+(c===0?'#ccc':'#455a64')+'">'+(c||'-')+'</td>';
+    });
+    h+='<td colspan="3" style="padding:4px 8px;text-align:right;background:#f5f5f5;font-size:9px">TB '+(gDays/dates.length).toFixed(1)+' NV/ngày</td>';
+    h+='</tr></tfoot></table></div>';
     h+='<div style="padding:6px 12px;background:#f9f9f9;font-size:9px;color:#888;border-top:1px solid #eee;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px">';
-    h+='<span><i class="fas fa-info-circle"></i> Ước tính từ lịch đã sắp — chưa gồm thưởng/phạt. FT tính theo tỷ lệ ngày công.</span>';
+    h+='<span><i class="fas fa-info-circle"></i> Ước tính từ lịch đã sắp — chưa gồm thưởng/phạt. Rê chuột vào ô để xem chi tiết giờ.</span>';
     h+='<span>FT: <b style="color:#2e7d32">'+formatCurrency(Math.round(gFT))+'</b> · PT: <b style="color:#e65100">'+formatCurrency(Math.round(gPT))+'</b></span></div>';
     h+='</div>';
     return h;
